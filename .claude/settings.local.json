@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm --version)",
+      "Bash(nvm --version)",
+      "Bash(nvm list *)",
+      "Read(//c/laragon/bin/nodejs//**)",
+      "Read(//c/laragon/bin/nodejs/**)",
+      "Bash(npx create-next-app@latest *)",
+      "Bash(npm install *)",
+      "Bash(psql --version)",
+      "Read(//c/laragon/bin/**)",
+      "Bash(npx prisma *)",
+      "Bash(npx tsc *)"
+    ]
+  }
+}

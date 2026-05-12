@@ -1,0 +1,295 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── ENUMS ───────────────────────────────────────────────
+
+enum Role {
+  SUPERADMIN
+  PENGURUS
+  JEMAAH
+}
+
+enum SubRole {
+  KETUA
+  BENDAHARA
+  SEKRETARIS
+}
+
+enum StatusKegiatan {
+  UPCOMING
+  ONGOING
+  SELESAI
+  DIBATALKAN
+}
+
+enum StatusDonasi {
+  PENDING
+  DIKONFIRMASI
+  DITOLAK
+}
+
+enum MetodePembayaran {
+  TRANSFER_BANK
+  TUNAI
+  QRIS
+}
+
+enum StatusPengumuman {
+  DRAFT
+  AKTIF
+  KADALUARSA
+}
+
+enum KategoriPengeluaran {
+  OPERASIONAL
+  KEGIATAN
+  SOSIAL
+  LAINNYA
+}
+
+enum StatusRekening {
+  AKTIF
+  NONAKTIF
+}
+
+enum StatusPendaftaran {
+  TERDAFTAR
+  HADIR
+  TIDAK_HADIR
+  BATAL
+}
+
+// ─── TABEL UTAMA ─────────────────────────────────────────
+
+model Religion {
+  id          Int       @id @default(autoincrement())
+  nama        String    @unique
+  deskripsi   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  users        User[]
+  kegiatan     Kegiatan[]
+  pengumuman   Pengumuman[]
+  donasi       Donasi[]
+  pengeluaran  Pengeluaran[]
+  rekening     Rekening[]
+  jemaah       Jemaah[]
+}
+
+model User {
+  id            Int       @id @default(autoincrement())
+  nama          String
+  email         String    @unique
+  password      String
+  role          Role
+  subRole       SubRole?
+  religionId    Int?
+  fotoProfil    String?
+  status        Boolean   @default(true)
+  emailVerified DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  religion             Religion?             @relation(fields: [religionId], references: [id])
+  jemaahProfile        Jemaah?
+  donasi               Donasi[]              @relation("DonasiByUser")
+  konfirmasiDonasi     Donasi[]              @relation("KonfirmasiBy")
+  pengeluaran          Pengeluaran[]
+  notifikasi           Notifikasi[]
+  activityLogs         ActivityLog[]
+  sessions             Session[]
+  kegiatanPendaftaran  KegiatanPendaftaran[]
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       Int
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Jemaah {
+  id         Int       @id @default(autoincrement())
+  userId     Int?      @unique
+  religionId Int
+  nama       String
+  email      String?
+  noHp       String?
+  alamat     String?
+  status     Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
+
+  user     User?    @relation(fields: [userId], references: [id])
+  religion Religion @relation(fields: [religionId], references: [id])
+  donasi   Donasi[]
+}
+
+model Kegiatan {
+  id            Int            @id @default(autoincrement())
+  religionId    Int
+  namaKegiatan  String
+  tanggal       DateTime
+  waktuMulai    String
+  waktuSelesai  String?
+  lokasi        String
+  deskripsi     String?
+  kapasitas     Int?
+  status        StatusKegiatan @default(UPCOMING)
+  createdBy     Int
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  deletedAt     DateTime?
+  deletedReason String?
+
+  religion    Religion              @relation(fields: [religionId], references: [id])
+  pendaftaran KegiatanPendaftaran[]
+}
+
+model KegiatanPendaftaran {
+  id         Int               @id @default(autoincrement())
+  kegiatanId Int
+  userId     Int
+  status     StatusPendaftaran @default(TERDAFTAR)
+  catatan    String?
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+
+  kegiatan Kegiatan @relation(fields: [kegiatanId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id])
+
+  @@unique([kegiatanId, userId])
+}
+
+model Pengumuman {
+  id              Int              @id @default(autoincrement())
+  religionId      Int
+  judul           String
+  isi             String           @db.Text
+  tanggalPublish  DateTime         @default(now())
+  expireDate      DateTime?
+  status          StatusPengumuman @default(DRAFT)
+  createdBy       Int
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  deletedAt       DateTime?
+  deletedReason   String?
+
+  religion  Religion              @relation(fields: [religionId], references: [id])
+  lampiran  PengumumanLampiran[]
+}
+
+model PengumumanLampiran {
+  id           Int      @id @default(autoincrement())
+  pengumumanId Int
+  namaFile     String
+  url          String
+  ukuran       Int
+  createdAt    DateTime @default(now())
+
+  pengumuman Pengumuman @relation(fields: [pengumumanId], references: [id], onDelete: Cascade)
+}
+
+model Donasi {
+  id                 Int              @id @default(autoincrement())
+  religionId         Int
+  userId             Int?
+  jemaahId           Int?
+  rekeningId         Int?
+  namaDonatur        String
+  nominal            Decimal          @db.Decimal(15, 2)
+  tanggal            DateTime
+  metodePembayaran   MetodePembayaran
+  status             StatusDonasi     @default(PENDING)
+  catatan            String?
+  buktiPembayaran    String?
+  dikonfirmasiOleh   Int?
+  dikonfirmasiAt     DateTime?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  deletedAt          DateTime?
+  deletedReason      String?
+
+  religion     Religion  @relation(fields: [religionId], references: [id])
+  user         User?     @relation("DonasiByUser", fields: [userId], references: [id])
+  jemaah       Jemaah?   @relation(fields: [jemaahId], references: [id])
+  rekening     Rekening? @relation(fields: [rekeningId], references: [id])
+  konfirmasiBy User?     @relation("KonfirmasiBy", fields: [dikonfirmasiOleh], references: [id])
+}
+
+model Pengeluaran {
+  id            Int                 @id @default(autoincrement())
+  religionId    Int
+  keterangan    String
+  nominal       Decimal             @db.Decimal(15, 2)
+  tanggal       DateTime
+  kategori      KategoriPengeluaran
+  bukti         String?
+  createdBy     Int
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  deletedAt     DateTime?
+  deletedReason String?
+
+  religion Religion @relation(fields: [religionId], references: [id])
+  user     User     @relation(fields: [createdBy], references: [id])
+}
+
+model Rekening {
+  id             Int           @id @default(autoincrement())
+  religionId     Int
+  namaBank       String
+  nomorRekening  String
+  namaPemilik    String
+  catatan        String?
+  status         StatusRekening @default(AKTIF)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  religion Religion @relation(fields: [religionId], references: [id])
+  donasi   Donasi[]
+}
+
+model Notifikasi {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  judul      String
+  isi        String
+  urlTujuan  String?
+  dibaca     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ActivityLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  aksi      String
+  model     String
+  recordId  Int?
+  detail    String?  @db.Text
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
