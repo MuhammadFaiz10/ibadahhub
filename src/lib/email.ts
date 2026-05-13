@@ -186,6 +186,115 @@ export function verifyEmailEmail(opts: {
   `)
 }
 
+export function donasiSuccessEmail(opts: {
+  namaDonatur: string
+  nominal: string
+  paymentChannel: string
+  tanggal: string
+  appUrl: string
+}): string {
+  const isManual = opts.paymentChannel === 'manual_paid'
+  const channelLabel = isManual ? 'Dikonfirmasi Manual oleh Pengurus' : opts.paymentChannel
+
+  return wrap(`
+    <h2 style="margin: 0 0 8px 0; color: #111827; font-size: 18px;">Donasi Anda Berhasil Dikonfirmasi ✓</h2>
+    <p style="color: #4b5563; line-height: 1.6;">
+      Assalamu'alaikum, <strong>${escapeHtml(opts.namaDonatur)}</strong>.<br>
+      Terima kasih atas donasi Anda. Pembayaran telah kami terima dan dikonfirmasi.
+    </p>
+    <table style="width: 100%; margin: 20px 0; border-collapse: collapse; background: #f9fafb; border-radius: 8px; overflow: hidden;">
+      <tr style="border-bottom: 1px solid #e5e7eb;">
+        <td style="padding: 12px 16px; color: #6b7280; font-size: 13px; width: 40%;">Nama Donatur</td>
+        <td style="padding: 12px 16px; color: #111827; font-weight: 600;">${escapeHtml(opts.namaDonatur)}</td>
+      </tr>
+      <tr style="border-bottom: 1px solid #e5e7eb;">
+        <td style="padding: 12px 16px; color: #6b7280; font-size: 13px;">Nominal</td>
+        <td style="padding: 12px 16px; color: #059669; font-weight: 700; font-size: 18px;">${escapeHtml(opts.nominal)}</td>
+      </tr>
+      <tr style="border-bottom: 1px solid #e5e7eb;">
+        <td style="padding: 12px 16px; color: #6b7280; font-size: 13px;">Metode Pembayaran</td>
+        <td style="padding: 12px 16px; color: #111827;">${escapeHtml(channelLabel)}</td>
+      </tr>
+      <tr>
+        <td style="padding: 12px 16px; color: #6b7280; font-size: 13px;">Tanggal Dikonfirmasi</td>
+        <td style="padding: 12px 16px; color: #111827;">${escapeHtml(opts.tanggal)}</td>
+      </tr>
+    </table>
+    <p style="color: #4b5563; line-height: 1.6;">
+      Semoga donasi Anda menjadi amal jariyah yang bermanfaat. Jazakallahu khairan.
+    </p>
+    <p style="margin: 24px 0;">
+      <a href="${opts.appUrl}" style="${buttonStyle}">Lihat Riwayat Donasi</a>
+    </p>
+  `)
+}
+
+export async function sendDonasiSuccessEmail(
+  donasi: {
+    id: number
+    namaDonatur: string
+    nominal: { toString(): string } | number
+    userId: number | null
+    jemaahId: number | null
+    dikonfirmasiAt?: Date | null
+  },
+  paymentChannel: string
+): Promise<void> {
+  const { prisma } = await import('./prisma')
+
+  let toEmail: string | null = null
+  let toName = donasi.namaDonatur
+
+  if (donasi.userId) {
+    const user = await prisma.user.findUnique({
+      where: { id: donasi.userId },
+      select: { email: true, nama: true },
+    })
+    if (user?.email) {
+      toEmail = user.email
+      toName = user.nama
+    }
+  }
+
+  if (!toEmail && donasi.jemaahId) {
+    const jemaah = await prisma.jemaah.findUnique({
+      where: { id: donasi.jemaahId },
+      select: { email: true, nama: true },
+    })
+    if (jemaah?.email) {
+      toEmail = jemaah.email
+      toName = jemaah.nama
+    }
+  }
+
+  if (!toEmail) return
+
+  const nominal = new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0,
+  }).format(Number(donasi.nominal.toString()))
+
+  const tanggal = new Intl.DateTimeFormat('id-ID', {
+    dateStyle: 'long',
+    timeStyle: 'short',
+  }).format(donasi.dikonfirmasiAt ?? new Date())
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+
+  await sendEmail({
+    to: toEmail,
+    subject: `Donasi Dikonfirmasi — ${nominal} | IbadahHub`,
+    html: donasiSuccessEmail({
+      namaDonatur: toName,
+      nominal,
+      paymentChannel,
+      tanggal,
+      appUrl,
+    }),
+  })
+}
+
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, '&amp;')

@@ -5,6 +5,7 @@ import {
   donasiUpdateSchema,
   donasiActionSchema,
 } from '@/lib/validations/donasi'
+import { sendDonasiSuccessEmail } from '@/lib/email'
 
 function canManageKeuangan(session: { user: { role: string; subRole?: string | null } } | null) {
   if (!session) return false
@@ -181,12 +182,14 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (donasi.status === 'DIKONFIRMASI') {
       return NextResponse.json({ error: 'Donasi sudah dikonfirmasi' }, { status: 400 })
     }
-    await prisma.donasi.update({
+    const confirmedAt = new Date()
+    const updatedDonasi = await prisma.donasi.update({
       where: { id },
       data: {
         status: 'DIKONFIRMASI',
         dikonfirmasiOleh: userId,
-        dikonfirmasiAt: new Date(),
+        dikonfirmasiAt: confirmedAt,
+        paymentChannel: 'manual_paid',
       },
     })
     await prisma.activityLog.create({
@@ -198,6 +201,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         detail: `Konfirmasi donasi ${donasi.namaDonatur}`,
       },
     })
+    await sendDonasiSuccessEmail(
+      { ...updatedDonasi, dikonfirmasiAt: confirmedAt },
+      'manual_paid'
+    )
     return NextResponse.json({ success: true })
   }
 

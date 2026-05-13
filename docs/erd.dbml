@@ -1,0 +1,254 @@
+// IbadahHub - Entity Relationship Diagram
+// Source: Prisma migrations (PostgreSQL)
+// Format: DBML — paste ke https://dbdiagram.io
+
+//// ------------------------------------------
+//// ENUMS
+//// ------------------------------------------
+
+Enum Role {
+  SUPERADMIN
+  PENGURUS
+  JEMAAH
+}
+
+Enum SubRole {
+  KETUA
+  BENDAHARA
+  SEKRETARIS
+}
+
+Enum StatusKegiatan {
+  UPCOMING
+  ONGOING
+  SELESAI
+  DIBATALKAN
+}
+
+Enum StatusDonasi {
+  PENDING
+  DIKONFIRMASI
+  DITOLAK
+}
+
+Enum MetodePembayaran {
+  TRANSFER_BANK
+  TUNAI
+  QRIS
+}
+
+Enum StatusPengumuman {
+  DRAFT
+  AKTIF
+  KADALUARSA
+}
+
+Enum KategoriPengeluaran {
+  OPERASIONAL
+  KEGIATAN
+  SOSIAL
+  LAINNYA
+}
+
+Enum StatusRekening {
+  AKTIF
+  NONAKTIF
+}
+
+Enum StatusPendaftaran {
+  TERDAFTAR
+  HADIR
+  TIDAK_HADIR
+  BATAL
+}
+
+//// ------------------------------------------
+//// TABLES
+//// ------------------------------------------
+
+Table Religion {
+  id          int         [pk, increment]
+  nama        text        [unique, not null]
+  deskripsi   text        [null]
+  createdAt   timestamp   [not null, default: `now()`]
+  updatedAt   timestamp   [not null]
+  deletedAt   timestamp   [null, note: 'soft delete']
+}
+
+Table User {
+  id            int       [pk, increment]
+  nama          text      [not null]
+  email         text      [unique, not null]
+  password      text      [not null]
+  role          Role      [not null]
+  subRole       SubRole   [null]
+  religionId    int       [null, ref: > Religion.id]
+  fotoProfil    text      [null]
+  status        boolean   [not null, default: true]
+  emailVerified timestamp [null]
+  createdAt     timestamp [not null, default: `now()`]
+  updatedAt     timestamp [not null]
+  deletedAt     timestamp [null, note: 'soft delete']
+}
+
+Table Session {
+  id           text      [pk, note: 'CUID']
+  sessionToken text      [unique, not null]
+  userId       int       [not null, ref: > User.id]
+  expires      timestamp [not null]
+}
+
+Table VerificationToken {
+  identifier text      [not null]
+  token      text      [unique, not null]
+  expires    timestamp [not null]
+
+  indexes {
+    (identifier, token) [unique]
+  }
+}
+
+Table Jemaah {
+  id         int       [pk, increment]
+  userId     int       [unique, null, ref: > User.id]
+  religionId int       [not null, ref: > Religion.id]
+  nama       text      [not null]
+  email      text      [null]
+  noHp       text      [null]
+  alamat     text      [null]
+  status     boolean   [not null, default: true]
+  createdAt  timestamp [not null, default: `now()`]
+  updatedAt  timestamp [not null]
+  deletedAt  timestamp [null, note: 'soft delete']
+}
+
+Table Kegiatan {
+  id            int            [pk, increment]
+  religionId    int            [not null, ref: > Religion.id]
+  namaKegiatan  text           [not null]
+  tanggal       timestamp      [not null]
+  waktuMulai    text           [not null]
+  waktuSelesai  text           [null]
+  lokasi        text           [not null]
+  deskripsi     text           [null]
+  kapasitas     int            [null]
+  status        StatusKegiatan [not null, default: 'UPCOMING']
+  createdBy     int            [not null, note: 'User ID, no DB-level FK constraint']
+  createdAt     timestamp      [not null, default: `now()`]
+  updatedAt     timestamp      [not null]
+  deletedAt     timestamp      [null, note: 'soft delete']
+  deletedReason text           [null]
+}
+
+Table KegiatanPendaftaran {
+  id         int               [pk, increment]
+  kegiatanId int               [not null, ref: > Kegiatan.id]
+  userId     int               [not null, ref: > User.id]
+  status     StatusPendaftaran [not null, default: 'TERDAFTAR']
+  catatan    text              [null]
+  createdAt  timestamp         [not null, default: `now()`]
+  updatedAt  timestamp         [not null]
+
+  indexes {
+    (kegiatanId, userId) [unique]
+  }
+}
+
+Table Pengumuman {
+  id             int              [pk, increment]
+  religionId     int              [not null, ref: > Religion.id]
+  judul          text             [not null]
+  isi            text             [not null, note: 'TEXT (full text)']
+  tanggalPublish timestamp        [not null, default: `now()`]
+  expireDate     timestamp        [null]
+  status         StatusPengumuman [not null, default: 'DRAFT']
+  createdBy      int              [not null, note: 'User ID, no DB-level FK constraint']
+  createdAt      timestamp        [not null, default: `now()`]
+  updatedAt      timestamp        [not null]
+  deletedAt      timestamp        [null, note: 'soft delete']
+  deletedReason  text             [null]
+}
+
+Table PengumumanLampiran {
+  id           int       [pk, increment]
+  pengumumanId int       [not null, ref: > Pengumuman.id]
+  namaFile     text      [not null]
+  url          text      [not null]
+  ukuran       int       [not null, note: 'File size in bytes']
+  createdAt    timestamp [not null, default: `now()`]
+}
+
+Table Donasi {
+  id               int              [pk, increment]
+  religionId       int              [not null, ref: > Religion.id]
+  userId           int              [null, ref: > User.id]
+  jemaahId         int              [null, ref: > Jemaah.id]
+  rekeningId       int              [null, ref: > Rekening.id]
+  namaDonatur      text             [not null]
+  nominal          decimal(15,2)    [not null]
+  tanggal          timestamp        [not null]
+  metodePembayaran MetodePembayaran [not null]
+  status           StatusDonasi     [not null, default: 'PENDING']
+  catatan          text             [null]
+  buktiPembayaran  text             [null]
+  dikonfirmasiOleh int              [null, ref: > User.id]
+  dikonfirmasiAt   timestamp        [null]
+  createdAt        timestamp        [not null, default: `now()`]
+  updatedAt        timestamp        [not null]
+  deletedAt        timestamp        [null, note: 'soft delete']
+  deletedReason    text             [null]
+}
+
+Table Pengeluaran {
+  id            int                 [pk, increment]
+  religionId    int                 [not null, ref: > Religion.id]
+  keterangan    text                [not null]
+  nominal       decimal(15,2)       [not null]
+  tanggal       timestamp           [not null]
+  kategori      KategoriPengeluaran [not null]
+  bukti         text                [null]
+  createdBy     int                 [not null, ref: > User.id]
+  createdAt     timestamp           [not null, default: `now()`]
+  updatedAt     timestamp           [not null]
+  deletedAt     timestamp           [null, note: 'soft delete']
+  deletedReason text                [null]
+}
+
+Table Rekening {
+  id            int            [pk, increment]
+  religionId    int            [not null, ref: > Religion.id]
+  namaBank      text           [not null]
+  nomorRekening text           [not null]
+  namaPemilik   text           [not null]
+  catatan       text           [null]
+  status        StatusRekening [not null, default: 'AKTIF']
+  createdAt     timestamp      [not null, default: `now()`]
+  updatedAt     timestamp      [not null]
+}
+
+Table Notifikasi {
+  id        int       [pk, increment]
+  userId    int       [not null, ref: > User.id]
+  judul     text      [not null]
+  isi       text      [not null]
+  urlTujuan text      [null]
+  dibaca    boolean   [not null, default: false]
+  createdAt timestamp [not null, default: `now()`]
+}
+
+Table ActivityLog {
+  id        int       [pk, increment]
+  userId    int       [not null, ref: > User.id]
+  aksi      text      [not null]
+  model     text      [not null]
+  recordId  int       [null]
+  detail    text      [null, note: 'TEXT (full text)']
+  createdAt timestamp [not null, default: `now()`]
+}
+
+//// ------------------------------------------
+//// REFS TAMBAHAN (logical, no DB FK constraint)
+//// ------------------------------------------
+
+Ref: Kegiatan.createdBy > User.id
+Ref: Pengumuman.createdBy > User.id

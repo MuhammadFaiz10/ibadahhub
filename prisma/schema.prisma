@@ -38,6 +38,7 @@ enum MetodePembayaran {
   TRANSFER_BANK
   TUNAI
   QRIS
+  MIDTRANS
 }
 
 enum StatusPengumuman {
@@ -223,12 +224,18 @@ model Donasi {
   status             StatusDonasi     @default(PENDING)
   catatan            String?
   buktiPembayaran    String?
-  dikonfirmasiOleh   Int?
-  dikonfirmasiAt     DateTime?
-  createdAt          DateTime         @default(now())
-  updatedAt          DateTime         @updatedAt
-  deletedAt          DateTime?
-  deletedReason      String?
+  dikonfirmasiOleh      Int?
+  dikonfirmasiAt        DateTime?
+  midtransOrderId       String?          @unique
+  midtransToken         String?
+  midtransPaymentUrl    String?
+  midtransStatus        String?
+  midtransTransactionId String?
+  paymentChannel        String?
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  deletedAt             DateTime?
+  deletedReason         String?
 
   religion     Religion  @relation(fields: [religionId], references: [id])
   user         User?     @relation("DonasiByUser", fields: [userId], references: [id])

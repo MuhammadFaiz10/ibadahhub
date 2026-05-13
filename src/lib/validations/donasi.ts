@@ -7,7 +7,7 @@ export const donasiCreateSchema = z.object({
   namaDonatur: z.string().min(2, 'Nama donatur minimal 2 karakter').max(100),
   nominal: z.coerce.number().min(1, 'Nominal harus lebih dari 0'),
   tanggal: z.string().min(1, 'Tanggal wajib diisi'),
-  metodePembayaran: z.enum(['TRANSFER_BANK', 'TUNAI', 'QRIS'], {
+  metodePembayaran: z.enum(['TRANSFER_BANK', 'TUNAI', 'QRIS', 'MIDTRANS'], {
     errorMap: () => ({ message: 'Metode pembayaran tidak valid' }),
   }),
   catatan: z.string().max(500).optional().or(z.literal('')),

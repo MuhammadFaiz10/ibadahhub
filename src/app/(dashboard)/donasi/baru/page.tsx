@@ -24,7 +24,22 @@ const metodeOptions = [
   { value: 'TRANSFER_BANK', label: 'Transfer Bank' },
   { value: 'TUNAI', label: 'Tunai' },
   { value: 'QRIS', label: 'QRIS' },
+  { value: 'MIDTRANS', label: 'Bayar Online (Midtrans)' },
 ]
+
+function loadSnapScript(url: string, clientKey: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const existing = document.getElementById('midtrans-snap')
+    if (existing) { resolve(); return }
+    const script = document.createElement('script')
+    script.id = 'midtrans-snap'
+    script.src = url
+    script.setAttribute('data-client-key', clientKey)
+    script.onload = () => resolve()
+    script.onerror = reject
+    document.head.appendChild(script)
+  })
+}
 
 export default function DonasiBaruPage() {
   const router = useRouter()
@@ -63,13 +78,29 @@ export default function DonasiBaruPage() {
     }).catch(() => undefined)
   }, [isSuperAdmin, isJemaah, session, setValue])
 
-  const showRekeningSelector = watch('metodePembayaran') === 'TRANSFER_BANK' && rekeningList.length > 0
+  const metodePembayaran = watch('metodePembayaran')
+  const showRekeningSelector = metodePembayaran === 'TRANSFER_BANK' && rekeningList.length > 0
+  const isMidtrans = metodePembayaran === 'MIDTRANS'
 
   async function onSubmit(data: DonasiCreateInput) {
     try {
-      await axios.post('/api/donasi', data)
-      toast.success(isJemaah ? 'Donasi berhasil dicatat. Menunggu konfirmasi pengurus.' : 'Donasi berhasil dicatat')
-      router.push('/donasi')
+      const res = await axios.post('/api/donasi', data)
+
+      if (data.metodePembayaran === 'MIDTRANS') {
+        const snapRes = await axios.post('/api/donasi/midtrans', { donasiId: res.data.data.id })
+        const { token, snapScriptUrl, clientKey } = snapRes.data.data
+        await loadSnapScript(snapScriptUrl, clientKey)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ;(window as any).snap.pay(token, {
+          onSuccess: () => { toast.success('Pembayaran berhasil!'); router.push('/donasi') },
+          onPending: () => { toast.info('Menunggu pembayaran dikonfirmasi.'); router.push('/donasi') },
+          onError: () => { toast.error('Pembayaran gagal. Coba lagi dari halaman donasi.'); router.push('/donasi') },
+          onClose: () => { toast.warning('Pembayaran dibatalkan. Donasi tersimpan sebagai PENDING.'); router.push('/donasi') },
+        })
+      } else {
+        toast.success(isJemaah ? 'Donasi berhasil dicatat. Menunggu konfirmasi pengurus.' : 'Donasi berhasil dicatat')
+        router.push('/donasi')
+      }
     } catch (err) {
       if (axios.isAxiosError(err)) toast.error(err.response?.data?.error ?? 'Gagal menyimpan')
     }
@@ -176,16 +207,30 @@ export default function DonasiBaruPage() {
             </div>
           )}
 
-          <FileUploadField
-            label="Bukti Pembayaran"
-            kind="bukti"
-            accept="image/*,application/pdf"
-            value={watch('buktiPembayaran')}
-            onChange={(url) => setValue('buktiPembayaran', url ?? '', { shouldDirty: true })}
-          />
-          <p className="-mt-3 text-xs text-gray-400">
-            Opsional. Upload screenshot atau PDF bukti transfer (max 5 MB).
-          </p>
+          {!isMidtrans && (
+            <>
+              <FileUploadField
+                label="Bukti Pembayaran"
+                kind="bukti"
+                accept="image/*,application/pdf"
+                value={watch('buktiPembayaran')}
+                onChange={(url) => setValue('buktiPembayaran', url ?? '', { shouldDirty: true })}
+              />
+              <p className="-mt-3 text-xs text-gray-400">
+                Opsional. Upload screenshot atau PDF bukti transfer (max 5 MB).
+              </p>
+            </>
+          )}
+
+          {isMidtrans && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex gap-3 items-start">
+              <Info size={16} className="text-blue-500 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-blue-700">
+                Setelah klik <strong>Kirim</strong>, halaman pembayaran Midtrans akan terbuka.
+                Pilih metode bayar (transfer, e-wallet, QRIS, dll) dan selesaikan pembayaran di sana.
+              </p>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Catatan</label>

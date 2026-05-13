@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from 'react'
 import Link from 'next/link'
 import axios from 'axios'
 import { toast } from 'sonner'
-import { Plus, Pencil, Trash2, Check, X, HandCoins } from 'lucide-react'
+import { Plus, Pencil, Trash2, Check, X, HandCoins, CreditCard } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { SearchFilter } from '@/components/shared/SearchFilter'
@@ -56,10 +56,45 @@ export default function DonasiPage() {
   const [confirmTarget, setConfirmTarget] = useState<Donasi | null>(null)
   const [rejectTarget, setRejectTarget] = useState<Donasi | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [payingId, setPayingId] = useState<number | null>(null)
 
   const { data, total, isLoading, mutate } = useDataFetch<Donasi>('/api/donasi', {
     search, page, limit, status,
   })
+
+  function loadSnapScript(url: string, clientKey: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const existing = document.getElementById('midtrans-snap')
+      if (existing) { resolve(); return }
+      const script = document.createElement('script')
+      script.id = 'midtrans-snap'
+      script.src = url
+      script.setAttribute('data-client-key', clientKey)
+      script.onload = () => resolve()
+      script.onerror = reject
+      document.head.appendChild(script)
+    })
+  }
+
+  const handleBayar = useCallback(async (donasiId: number) => {
+    setPayingId(donasiId)
+    try {
+      const res = await axios.post('/api/donasi/midtrans', { donasiId })
+      const { token, snapScriptUrl, clientKey } = res.data.data
+      await loadSnapScript(snapScriptUrl, clientKey)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(window as any).snap.pay(token, {
+        onSuccess: () => { toast.success('Pembayaran berhasil!'); mutate() },
+        onPending: () => { toast.info('Menunggu pembayaran dikonfirmasi.'); mutate() },
+        onError: () => toast.error('Pembayaran gagal. Silakan coba lagi.'),
+        onClose: () => toast.warning('Pembayaran dibatalkan.'),
+      })
+    } catch (err) {
+      if (axios.isAxiosError(err)) toast.error(err.response?.data?.error ?? 'Gagal memulai pembayaran')
+    } finally {
+      setPayingId(null)
+    }
+  }, [mutate])
 
   // Fetch sekali untuk ambil totalDikonfirmasi (yang tidak di-return useDataFetch)
   useEffect(() => {
@@ -139,7 +174,8 @@ export default function DonasiPage() {
       render: (r) => (
         <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">
           {r.metodePembayaran === 'TRANSFER_BANK' ? 'Transfer' :
-           r.metodePembayaran === 'TUNAI' ? 'Tunai' : 'QRIS'}
+           r.metodePembayaran === 'TUNAI' ? 'Tunai' :
+           r.metodePembayaran === 'MIDTRANS' ? 'Online' : 'QRIS'}
         </span>
       ),
     },
@@ -190,10 +226,24 @@ export default function DonasiPage() {
               </button>
             </>
           )}
-          {!canManage && r.buktiPembayaran && (
-            <a href={r.buktiPembayaran} target="_blank" rel="noopener" className="text-xs text-primary hover:underline">
-              Bukti
-            </a>
+          {!canManage && (
+            <>
+              {r.metodePembayaran === 'MIDTRANS' && r.status === 'PENDING' && (
+                <button
+                  onClick={() => handleBayar(r.id)}
+                  disabled={payingId === r.id}
+                  className="flex items-center gap-1 px-2.5 py-1.5 text-xs bg-primary text-white rounded-lg hover:bg-primary-dark disabled:opacity-60"
+                >
+                  <CreditCard size={11} />
+                  {payingId === r.id ? 'Memuat...' : 'Bayar'}
+                </button>
+              )}
+              {r.buktiPembayaran && (
+                <a href={r.buktiPembayaran} target="_blank" rel="noopener" className="text-xs text-primary hover:underline">
+                  Bukti
+                </a>
+              )}
+            </>
           )}
         </div>
       ),
