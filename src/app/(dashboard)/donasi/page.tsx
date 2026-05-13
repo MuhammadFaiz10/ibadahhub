@@ -8,6 +8,7 @@ import { Plus, Pencil, Trash2, Check, X, HandCoins, CreditCard } from 'lucide-re
 import { useSession } from 'next-auth/react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { SearchFilter } from '@/components/shared/SearchFilter'
+import { ScopeFilter } from '@/components/shared/ScopeFilter'
 import { DataTable, type ColumnDef } from '@/components/shared/DataTable'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog'
@@ -25,8 +26,10 @@ interface Donasi {
   catatan: string | null
   buktiPembayaran: string | null
   religionId: number
+  tempatIbadahId: number | null
   userId: number | null
   religion: { nama: string } | null
+  tempatIbadah: { nama: string; slug: string } | null
   jemaah: { nama: string } | null
   konfirmasiBy: { nama: string } | null
 }
@@ -46,10 +49,13 @@ export default function DonasiPage() {
   const canManage =
     role === 'SUPERADMIN' || (role === 'PENGURUS' && (subRole === 'KETUA' || subRole === 'BENDAHARA'))
 
+  const isSuperAdmin = role === 'SUPERADMIN'
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [limit, setLimit] = useState(10)
   const [status, setStatus] = useState('')
+  const [filterReligionId, setFilterReligionId] = useState<number | undefined>(undefined)
+  const [filterTempatIbadahId, setFilterTempatIbadahId] = useState<number | undefined>(undefined)
   const [deleteTarget, setDeleteTarget] = useState<Donasi | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [totalDikonfirmasi, setTotalDikonfirmasi] = useState('0')
@@ -60,6 +66,8 @@ export default function DonasiPage() {
 
   const { data, total, isLoading, mutate } = useDataFetch<Donasi>('/api/donasi', {
     search, page, limit, status,
+    religionId: filterReligionId,
+    tempatIbadahId: filterTempatIbadahId,
   })
 
   function loadSnapScript(url: string, clientKey: string): Promise<void> {
@@ -101,12 +109,14 @@ export default function DonasiPage() {
     const params = new URLSearchParams()
     if (search) params.set('search', search)
     if (status) params.set('status', status)
+    if (filterReligionId) params.set('religionId', String(filterReligionId))
+    if (filterTempatIbadahId) params.set('tempatIbadahId', String(filterTempatIbadahId))
     params.set('page', '1')
     params.set('limit', '1')
     axios.get(`/api/donasi?${params}`).then((r) => {
       setTotalDikonfirmasi(r.data.totalDikonfirmasi ?? '0')
     }).catch(() => undefined)
-  }, [search, status, total])
+  }, [search, status, total, filterReligionId, filterTempatIbadahId])
 
   const handleDelete = useCallback(async (alasan: string) => {
     if (!deleteTarget) return
@@ -187,6 +197,17 @@ export default function DonasiPage() {
     {
       key: 'agama', header: 'Agama',
       render: (r) => <span className="text-gray-600 text-sm">{r.religion?.nama ?? '—'}</span>,
+    },
+    {
+      key: 'tempatIbadah', header: 'Tempat Ibadah',
+      render: (r) => (
+        <div className="text-sm">
+          <div className="text-gray-700">{r.tempatIbadah?.nama ?? '—'}</div>
+          {r.tempatIbadah?.slug && (
+            <div className="text-[11px] text-gray-400 font-mono">{r.tempatIbadah.slug}</div>
+          )}
+        </div>
+      ),
     },
     {
       key: 'actions', header: 'Aksi',
@@ -288,6 +309,17 @@ export default function DonasiPage() {
         >
           {statusOptions.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
         </select>
+        {isSuperAdmin && (
+          <ScopeFilter
+            religionId={filterReligionId}
+            tempatIbadahId={filterTempatIbadahId}
+            onChange={({ religionId, tempatIbadahId }) => {
+              setFilterReligionId(religionId)
+              setFilterTempatIbadahId(tempatIbadahId)
+              setPage(1)
+            }}
+          />
+        )}
       </SearchFilter>
 
       <DataTable

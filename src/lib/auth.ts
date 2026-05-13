@@ -33,7 +33,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         const user = await prisma.user.findUnique({
           where: { email: parsed.data.email, deletedAt: null },
-          include: { religion: true },
+          include: { religion: true, tempatIbadah: true },
         })
 
         if (!user || !user.status) return null
@@ -49,6 +49,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           subRole: user.subRole,
           religionId: user.religionId,
           religionName: user.religion?.nama ?? null,
+          tempatIbadahId: user.tempatIbadahId,
+          tempatIbadahNama: user.tempatIbadah?.nama ?? null,
         }
       },
     }),
@@ -63,6 +65,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.subRole = user.subRole
         token.religionId = user.religionId
         token.religionName = user.religionName
+        token.tempatIbadahId = user.tempatIbadahId
+        token.tempatIbadahNama = user.tempatIbadahNama
         token.lastActivity = nowSec
         return token
       }
@@ -84,6 +88,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       session.user.subRole = token.subRole as SubRole | null | undefined
       session.user.religionId = token.religionId as number | null | undefined
       session.user.religionName = token.religionName as string | null | undefined
+      session.user.tempatIbadahId = token.tempatIbadahId as number | null | undefined
+      session.user.tempatIbadahNama = token.tempatIbadahNama as string | null | undefined
       return session
     },
   },

@@ -16,6 +16,7 @@ const registerSchema = z
     password: z.string().min(8, 'Password minimal 8 karakter'),
     confirmPassword: z.string(),
     religionId: z.string().min(1, 'Agama wajib dipilih'),
+    tempatIbadahId: z.string().min(1, 'Tempat ibadah wajib dipilih'),
     noHp: z.string().optional(),
     alamat: z.string().optional(),
   })
@@ -31,8 +32,16 @@ interface AgamaOption {
   nama: string
 }
 
+interface TempatIbadahOption {
+  id: number
+  nama: string
+  kota: string | null
+}
+
 export default function RegisterPage() {
   const [agamaList, setAgamaList] = useState<AgamaOption[]>([])
+  const [tempatIbadahList, setTempatIbadahList] = useState<TempatIbadahOption[]>([])
+  const [tempatIbadahLoading, setTempatIbadahLoading] = useState(false)
   const [registeredEmail, setRegisteredEmail] = useState<string | null>(null)
   const [resending, setResending] = useState(false)
   const [devVerifyUrl, setDevVerifyUrl] = useState<string | null>(null)
@@ -40,18 +49,38 @@ export default function RegisterPage() {
   const {
     register,
     handleSubmit,
+    watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<RegisterInput>({ resolver: zodResolver(registerSchema) })
+
+  const selectedReligionId = watch('religionId')
 
   useEffect(() => {
     axios.get('/api/agama/public').then((r) => setAgamaList(r.data.data))
   }, [])
+
+  // Reload daftar tempat ibadah saat agama berubah
+  useEffect(() => {
+    setValue('tempatIbadahId', '')
+    if (!selectedReligionId) {
+      setTempatIbadahList([])
+      return
+    }
+    setTempatIbadahLoading(true)
+    axios
+      .get('/api/tempat-ibadah/public', { params: { religionId: selectedReligionId } })
+      .then((r) => setTempatIbadahList(r.data.data ?? []))
+      .catch(() => setTempatIbadahList([]))
+      .finally(() => setTempatIbadahLoading(false))
+  }, [selectedReligionId, setValue])
 
   async function onSubmit(data: RegisterInput) {
     try {
       const res = await axios.post('/api/register', {
         ...data,
         religionId: Number(data.religionId),
+        tempatIbadahId: Number(data.tempatIbadahId),
       })
       setRegisteredEmail(data.email)
       if (res.data?.devVerifyUrl) {
@@ -195,6 +224,34 @@ export default function RegisterPage() {
             </select>
             {errors.religionId && (
               <p className="mt-1 text-xs text-red-600">{errors.religionId.message}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Tempat Ibadah</label>
+            <select
+              {...register('tempatIbadahId')}
+              disabled={!selectedReligionId || tempatIbadahLoading}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent disabled:bg-gray-50 disabled:text-gray-400"
+            >
+              <option value="">
+                {!selectedReligionId
+                  ? '-- Pilih agama terlebih dahulu --'
+                  : tempatIbadahLoading
+                  ? 'Memuat...'
+                  : tempatIbadahList.length === 0
+                  ? 'Tidak ada tempat ibadah tersedia'
+                  : '-- Pilih Tempat Ibadah --'}
+              </option>
+              {tempatIbadahList.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.nama}
+                  {t.kota ? ` — ${t.kota}` : ''}
+                </option>
+              ))}
+            </select>
+            {errors.tempatIbadahId && (
+              <p className="mt-1 text-xs text-red-600">{errors.tempatIbadahId.message}</p>
             )}
           </div>
 

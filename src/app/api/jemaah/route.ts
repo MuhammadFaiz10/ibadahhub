@@ -23,12 +23,20 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(50, Math.max(1, Number(searchParams.get('limit') ?? 10)))
   const showArsip = searchParams.get('arsip') === 'true'
 
-  // PENGURUS hanya lihat agama sendiri
-  const religionId = isSuperAdmin ? undefined : (session.user.religionId ?? undefined)
+  // PENGURUS hanya lihat tempat ibadah sendiri; SUPERADMIN bisa filter via query.
+  const religionIdQ = searchParams.get('religionId')
+  const tempatIbadahIdQ = searchParams.get('tempatIbadahId')
+  const religionId = isSuperAdmin
+    ? religionIdQ ? Number(religionIdQ) : undefined
+    : (session.user.religionId ?? undefined)
+  const tempatIbadahId = isSuperAdmin
+    ? tempatIbadahIdQ ? Number(tempatIbadahIdQ) : undefined
+    : (session.user.tempatIbadahId ?? undefined)
 
   const where = {
     deletedAt: showArsip ? ({ not: null } as const) : null,
     ...(religionId !== undefined ? { religionId } : {}),
+    ...(tempatIbadahId !== undefined ? { tempatIbadahId } : {}),
     ...(search
       ? {
           OR: [
@@ -54,10 +62,12 @@ export async function GET(req: NextRequest) {
         alamat: true,
         status: true,
         religionId: true,
+        tempatIbadahId: true,
         userId: true,
         createdAt: true,
         deletedAt: true,
         religion: { select: { nama: true } },
+        tempatIbadah: { select: { nama: true, slug: true } },
       },
     }),
     prisma.jemaah.count({ where }),
@@ -86,14 +96,31 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
   }
 
-  // PENGURUS: paksa religionId sendiri
+  // PENGURUS: paksa scope dari session
   const safeReligionId = isSuperAdmin ? parsed.data.religionId : session.user.religionId!
+  const safeTempatIbadahId = isSuperAdmin
+    ? parsed.data.tempatIbadahId
+    : session.user.tempatIbadahId!
+  if (!safeTempatIbadahId) {
+    return NextResponse.json({ error: 'Tempat ibadah wajib dipilih' }, { status: 400 })
+  }
 
   const religion = await prisma.religion.findUnique({
     where: { id: safeReligionId, deletedAt: null },
   })
   if (!religion) {
     return NextResponse.json({ error: 'Agama tidak ditemukan' }, { status: 404 })
+  }
+
+  const ti = await prisma.tempatIbadah.findUnique({ where: { id: safeTempatIbadahId } })
+  if (!ti || ti.deletedAt) {
+    return NextResponse.json({ error: 'Tempat ibadah tidak ditemukan' }, { status: 404 })
+  }
+  if (ti.religionId !== safeReligionId) {
+    return NextResponse.json(
+      { error: 'Tempat ibadah tidak sesuai dengan agama' },
+      { status: 400 }
+    )
   }
 
   const jemaah = await prisma.jemaah.create({
@@ -103,6 +130,7 @@ export async function POST(req: NextRequest) {
       noHp: parsed.data.noHp || null,
       alamat: parsed.data.alamat || null,
       religionId: safeReligionId,
+      tempatIbadahId: safeTempatIbadahId,
       status: true,
     },
   })

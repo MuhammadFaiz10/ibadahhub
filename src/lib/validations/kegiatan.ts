@@ -7,6 +7,11 @@ export const kegiatanCreateSchema = z.object({
     .number({ required_error: 'Agama wajib dipilih' })
     .int()
     .positive('Agama tidak valid'),
+  tempatIbadahId: z
+    .number({ required_error: 'Tempat ibadah wajib dipilih' })
+    .int()
+    .positive('Tempat ibadah tidak valid')
+    .optional(),
   namaKegiatan: z.string().min(2, 'Nama kegiatan minimal 2 karakter').max(150),
   tanggal: z.string().min(1, 'Tanggal wajib diisi'),
   waktuMulai: z.string().regex(timeRegex, 'Format waktu HH:MM'),

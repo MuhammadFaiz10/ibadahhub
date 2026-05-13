@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard,
   Globe,
+  Building2,
   Users,
   UserCheck,
   Calendar,
@@ -23,6 +24,7 @@ import type { Session } from 'next-auth'
 const navItems: NavigationItem[] = [
   { label: 'Dashboard',    href: '/dashboard',   icon: LayoutDashboard, roles: ['SUPERADMIN', 'PENGURUS', 'JEMAAH'] },
   { label: 'Agama',        href: '/agama',        icon: Globe,           roles: ['SUPERADMIN'] },
+  { label: 'Tempat Ibadah',href: '/tempat-ibadah',icon: Building2,       roles: ['SUPERADMIN'] },
   { label: 'Pengurus',     href: '/pengurus',     icon: UserCheck,       roles: ['SUPERADMIN', 'PENGURUS'], subRoles: ['KETUA'] },
   { label: 'Jemaah',       href: '/jemaah',       icon: Users,           roles: ['SUPERADMIN', 'PENGURUS'], subRoles: ['KETUA', 'SEKRETARIS'] },
   { label: 'Kegiatan',     href: '/kegiatan',     icon: Calendar,        roles: ['SUPERADMIN', 'PENGURUS', 'JEMAAH'], subRoles: ['KETUA', 'SEKRETARIS'] },
@@ -42,7 +44,7 @@ interface SidebarProps {
 
 export function Sidebar({ session, onNavigate }: SidebarProps) {
   const pathname = usePathname()
-  const { role, subRole, name } = session.user
+  const { role, subRole, name, tempatIbadahNama } = session.user
 
   const visibleItems = navItems.filter((item) => {
     if (!item.roles?.includes(role)) return false
@@ -90,13 +92,23 @@ export function Sidebar({ session, onNavigate }: SidebarProps) {
           <div className="w-9 h-9 rounded-full bg-primary-light flex items-center justify-center flex-shrink-0">
             <span className="text-sm font-semibold text-primary">{getInisial(name ?? '')}</span>
           </div>
-          <div className="overflow-hidden">
+          <div className="overflow-hidden flex-1 min-w-0">
             <p className="text-sm font-medium text-gray-800 truncate">{name}</p>
             <p className="text-xs text-gray-400">
               {role === 'SUPERADMIN' ? 'Super Admin' : subRole ? subRole.charAt(0) + subRole.slice(1).toLowerCase() : role.charAt(0) + role.slice(1).toLowerCase()}
             </p>
           </div>
         </div>
+        {tempatIbadahNama ? (
+          <div className="mt-2.5 flex items-center gap-1.5 text-[11px] text-teal-700 bg-teal-50 px-2 py-1.5 rounded-md ring-1 ring-teal-100">
+            <Building2 size={11} className="flex-shrink-0" />
+            <span className="truncate" title={tempatIbadahNama}>{tempatIbadahNama}</span>
+          </div>
+        ) : role === 'SUPERADMIN' ? (
+          <div className="mt-2.5 text-[11px] text-violet-700 bg-violet-50 px-2 py-1.5 rounded-md ring-1 ring-violet-100 text-center">
+            Lintas tenant
+          </div>
+        ) : null}
       </div>
     </aside>
   )

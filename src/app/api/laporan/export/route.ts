@@ -28,8 +28,20 @@ export async function GET(req: NextRequest) {
   const format = (searchParams.get('format') ?? 'xlsx').toLowerCase()
   const tahun = Number(searchParams.get('tahun')) || new Date().getFullYear()
 
-  const religionId = session.user.role !== 'SUPERADMIN' ? (session.user.religionId ?? -1) : undefined
-  const data = await computeLaporanData(tahun, religionId)
+  const isSuperAdmin = session.user.role === 'SUPERADMIN'
+  const religionIdQ = searchParams.get('religionId')
+  const tempatIbadahIdQ = searchParams.get('tempatIbadahId')
+  const religionId = isSuperAdmin
+    ? religionIdQ && !Number.isNaN(Number(religionIdQ))
+      ? Number(religionIdQ)
+      : undefined
+    : (session.user.religionId ?? -1)
+  const tempatIbadahId = isSuperAdmin
+    ? tempatIbadahIdQ && !Number.isNaN(Number(tempatIbadahIdQ))
+      ? Number(tempatIbadahIdQ)
+      : undefined
+    : (session.user.tempatIbadahId ?? -1)
+  const data = await computeLaporanData(tahun, religionId, tempatIbadahId)
 
   if (format === 'xlsx') {
     const wb = XLSX.utils.book_new()
@@ -37,7 +49,7 @@ export async function GET(req: NextRequest) {
     // Sheet 1: Ringkasan
     const ringkasan = [
       ['Laporan Keuangan'],
-      [`Tahun ${tahun}${data.religionName ? ` — ${data.religionName}` : ''}`],
+      [`Tahun ${tahun}${data.religionName ? ` — ${data.religionName}` : ''}${data.tempatIbadahName ? ` — ${data.tempatIbadahName}` : ''}`],
       [],
       ['Item', 'Nilai'],
       ['Total Donasi (DIKONFIRMASI)', data.totalDonasi],
@@ -96,7 +108,7 @@ export async function GET(req: NextRequest) {
     doc.setFontSize(11)
     doc.setFont('helvetica', 'normal')
     doc.text(
-      `Tahun ${tahun}${data.religionName ? ` — ${data.religionName}` : ''}`,
+      `Tahun ${tahun}${data.religionName ? ` — ${data.religionName}` : ''}${data.tempatIbadahName ? ` — ${data.tempatIbadahName}` : ''}`,
       14,
       25
     )

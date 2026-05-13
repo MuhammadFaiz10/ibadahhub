@@ -8,6 +8,7 @@ import { Plus, Pencil, Trash2 } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { SearchFilter } from '@/components/shared/SearchFilter'
+import { ScopeFilter } from '@/components/shared/ScopeFilter'
 import { DataTable, type ColumnDef } from '@/components/shared/DataTable'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog'
@@ -21,7 +22,9 @@ interface Rekening {
   catatan: string | null
   status: 'AKTIF' | 'NONAKTIF'
   religionId: number
+  tempatIbadahId: number | null
   religion: { nama: string } | null
+  tempatIbadah: { nama: string; slug: string } | null
 }
 
 export default function RekeningPage() {
@@ -36,9 +39,13 @@ export default function RekeningPage() {
   const [limit, setLimit] = useState(10)
   const [deleteTarget, setDeleteTarget] = useState<Rekening | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [filterReligionId, setFilterReligionId] = useState<number | undefined>(undefined)
+  const [filterTempatIbadahId, setFilterTempatIbadahId] = useState<number | undefined>(undefined)
 
   const { data, total, isLoading, mutate } = useDataFetch<Rekening>('/api/rekening', {
     search, page, limit,
+    religionId: filterReligionId,
+    tempatIbadahId: filterTempatIbadahId,
   })
 
   const handleDelete = useCallback(async () => {
@@ -73,6 +80,17 @@ export default function RekeningPage() {
     {
       key: 'religion', header: 'Agama',
       render: (r) => <span className="text-gray-600">{r.religion?.nama ?? '—'}</span>,
+    },
+    {
+      key: 'tempatIbadah', header: 'Tempat Ibadah',
+      render: (r) => (
+        <div className="text-sm">
+          <div className="text-gray-700">{r.tempatIbadah?.nama ?? '—'}</div>
+          {r.tempatIbadah?.slug && (
+            <div className="text-[11px] text-gray-400 font-mono">{r.tempatIbadah.slug}</div>
+          )}
+        </div>
+      ),
     },
     {
       key: 'status', header: 'Status',
@@ -120,7 +138,19 @@ export default function RekeningPage() {
         value={search}
         onChange={(v) => { setSearch(v); setPage(1) }}
         placeholder="Cari bank, nomor, atau atas nama..."
-      />
+      >
+        {isSuperAdmin && (
+          <ScopeFilter
+            religionId={filterReligionId}
+            tempatIbadahId={filterTempatIbadahId}
+            onChange={({ religionId, tempatIbadahId }) => {
+              setFilterReligionId(religionId)
+              setFilterTempatIbadahId(tempatIbadahId)
+              setPage(1)
+            }}
+          />
+        )}
+      </SearchFilter>
 
       <DataTable
         data={data}

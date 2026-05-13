@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { pengeluaranUpdateSchema } from '@/lib/validations/pengeluaran'
+import { validateScopeUpdate, isScopeError } from '@/lib/scope'
 
 function canManageKeuangan(session: { user: { role: string; subRole?: string | null } } | null) {
   if (!session) return false
@@ -22,13 +23,13 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
   const pengeluaran = await prisma.pengeluaran.findUnique({
     where: { id, deletedAt: null },
-    include: { religion: { select: { id: true, nama: true } } },
+    include: { religion: { select: { id: true, nama: true } }, tempatIbadah: { select: { id: true, nama: true, slug: true } } },
   })
   if (!pengeluaran) return NextResponse.json({ error: 'Pengeluaran tidak ditemukan' }, { status: 404 })
 
   if (
     session.user.role === 'PENGURUS' &&
-    pengeluaran.religionId !== session.user.religionId
+    pengeluaran.tempatIbadahId !== session.user.tempatIbadahId
   ) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
@@ -49,7 +50,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   const pengeluaran = await prisma.pengeluaran.findUnique({ where: { id, deletedAt: null } })
   if (!pengeluaran) return NextResponse.json({ error: 'Pengeluaran tidak ditemukan' }, { status: 404 })
 
-  if (session.user.role === 'PENGURUS' && pengeluaran.religionId !== session.user.religionId) {
+  if (session.user.role === 'PENGURUS' && pengeluaran.tempatIbadahId !== session.user.tempatIbadahId) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -59,7 +60,16 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
   }
 
-  const updateData: Record<string, unknown> = { ...parsed.data }
+  const scopeRes = await validateScopeUpdate(
+    session,
+    { religionId: pengeluaran.religionId, tempatIbadahId: pengeluaran.tempatIbadahId },
+    { religionId: parsed.data.religionId, tempatIbadahId: parsed.data.tempatIbadahId }
+  )
+  if (isScopeError(scopeRes)) {
+    return NextResponse.json({ error: scopeRes.error }, { status: scopeRes.status })
+  }
+
+  const updateData: Record<string, unknown> = { ...parsed.data, ...scopeRes }
   if (typeof updateData.tanggal === 'string') {
     updateData.tanggal = new Date(updateData.tanggal as string)
   }
@@ -93,7 +103,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   const pengeluaran = await prisma.pengeluaran.findUnique({ where: { id, deletedAt: null } })
   if (!pengeluaran) return NextResponse.json({ error: 'Pengeluaran tidak ditemukan' }, { status: 404 })
 
-  if (session.user.role === 'PENGURUS' && pengeluaran.religionId !== session.user.religionId) {
+  if (session.user.role === 'PENGURUS' && pengeluaran.tempatIbadahId !== session.user.tempatIbadahId) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -136,7 +146,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     return NextResponse.json({ error: 'Pengeluaran tidak dalam kondisi dihapus' }, { status: 400 })
   }
 
-  if (session.user.role === 'PENGURUS' && pengeluaran.religionId !== session.user.religionId) {
+  if (session.user.role === 'PENGURUS' && pengeluaran.tempatIbadahId !== session.user.tempatIbadahId) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 

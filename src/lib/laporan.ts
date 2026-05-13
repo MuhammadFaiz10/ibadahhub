@@ -9,6 +9,7 @@ export const bulanLabel = [
 export interface LaporanData {
   tahun: number
   religionName: string | null
+  tempatIbadahName: string | null
   totalDonasi: number
   totalPengeluaran: number
   saldo: number
@@ -19,7 +20,8 @@ export interface LaporanData {
 
 export async function computeLaporanData(
   tahun: number,
-  religionId?: number
+  religionId?: number,
+  tempatIbadahId?: number
 ): Promise<LaporanData> {
   const startOfYear = new Date(`${tahun}-01-01T00:00:00.000Z`)
   const endOfYear = new Date(`${tahun + 1}-01-01T00:00:00.000Z`)
@@ -27,6 +29,7 @@ export async function computeLaporanData(
   const baseWhere = {
     deletedAt: null,
     ...(religionId !== undefined ? { religionId } : {}),
+    ...(tempatIbadahId !== undefined ? { tempatIbadahId } : {}),
     tanggal: { gte: startOfYear, lt: endOfYear },
   }
 
@@ -38,6 +41,7 @@ export async function computeLaporanData(
     pengeluaranBulanan,
     kegiatanCount,
     religion,
+    tempatIbadah,
   ] = await Promise.all([
     prisma.donasi.aggregate({
       where: { ...baseWhere, status: 'DIKONFIRMASI' },
@@ -70,11 +74,18 @@ export async function computeLaporanData(
       where: {
         deletedAt: null,
         ...(religionId !== undefined ? { religionId } : {}),
+        ...(tempatIbadahId !== undefined ? { tempatIbadahId } : {}),
         tanggal: { gte: startOfYear, lt: endOfYear },
       },
     }),
     religionId !== undefined
       ? prisma.religion.findUnique({ where: { id: religionId }, select: { nama: true } })
+      : Promise.resolve(null),
+    tempatIbadahId !== undefined
+      ? prisma.tempatIbadah.findUnique({
+          where: { id: tempatIbadahId },
+          select: { nama: true },
+        })
       : Promise.resolve(null),
   ])
 
@@ -99,6 +110,7 @@ export async function computeLaporanData(
   return {
     tahun,
     religionName: religion?.nama ?? null,
+    tempatIbadahName: tempatIbadah?.nama ?? null,
     totalDonasi,
     totalPengeluaran,
     saldo: totalDonasi - totalPengeluaran,

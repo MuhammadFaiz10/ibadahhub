@@ -34,8 +34,14 @@ export async function GET(req: NextRequest) {
     deletedAt: null,
   }
 
-  if (!isSuperAdmin) {
+  if (isSuperAdmin) {
+    const r = searchParams.get('religionId')
+    const t = searchParams.get('tempatIbadahId')
+    if (r && !Number.isNaN(Number(r))) where.religionId = Number(r)
+    if (t && !Number.isNaN(Number(t))) where.tempatIbadahId = Number(t)
+  } else {
     where.religionId = session.user.religionId ?? -1
+    where.tempatIbadahId = session.user.tempatIbadahId ?? -1
   }
   if (isJemaah) {
     // JEMAAH hanya lihat donasinya sendiri
@@ -98,13 +104,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
   }
 
-  // Tentukan religionId
+  // Tentukan scope
   const safeReligionId = isSuperAdmin
     ? parsed.data.religionId
     : (session.user.religionId ?? null)
+  const safeTempatIbadahId = isSuperAdmin
+    ? parsed.data.tempatIbadahId
+    : (session.user.tempatIbadahId ?? null)
 
   if (!safeReligionId) {
     return NextResponse.json({ error: 'Agama tidak ditentukan' }, { status: 400 })
+  }
+  if (!safeTempatIbadahId) {
+    return NextResponse.json({ error: 'Tempat ibadah tidak ditentukan' }, { status: 400 })
   }
 
   const religion = await prisma.religion.findUnique({
@@ -114,12 +126,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Agama tidak ditemukan' }, { status: 404 })
   }
 
+  const ti = await prisma.tempatIbadah.findUnique({ where: { id: safeTempatIbadahId } })
+  if (!ti || ti.deletedAt) {
+    return NextResponse.json({ error: 'Tempat ibadah tidak ditemukan' }, { status: 404 })
+  }
+  if (ti.religionId !== safeReligionId) {
+    return NextResponse.json(
+      { error: 'Tempat ibadah tidak sesuai dengan agama' },
+      { status: 400 }
+    )
+  }
+
   // JEMAAH: paksa userId = sendiri, namaDonatur = nama session
   const userId = isJemaah ? Number(session.user.id) : null
 
   const donasi = await prisma.donasi.create({
     data: {
       religionId: safeReligionId,
+      tempatIbadahId: safeTempatIbadahId,
       userId,
       jemaahId: isJemaah ? null : (parsed.data.jemaahId ?? null),
       rekeningId: parsed.data.rekeningId ?? null,

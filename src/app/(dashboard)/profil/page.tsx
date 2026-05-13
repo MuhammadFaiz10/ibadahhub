@@ -19,6 +19,9 @@ import {
   CalendarDays,
   Hash,
   CheckCircle2,
+  Building2,
+  MapPin,
+  Phone,
 } from 'lucide-react'
 import {
   profilUpdateSchema,
@@ -39,6 +42,18 @@ interface ProfilData {
   fotoProfil: string | null
   createdAt: string
   religion: { id: number; nama: string } | null
+  tempatIbadah: {
+    id: number
+    nama: string
+    slug: string
+    alamat: string | null
+    kota: string | null
+    provinsi: string | null
+    noTelp: string | null
+    email: string | null
+    logo: string | null
+    status: 'AKTIF' | 'NONAKTIF'
+  } | null
 }
 
 function ProfileSkeleton() {
@@ -209,10 +224,141 @@ export default function ProfilPage() {
                   {profile.religion.nama}
                 </span>
               )}
+              {profile.tempatIbadah && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-teal-50 text-teal-700 ring-1 ring-teal-100">
+                  <Building2 size={11} />
+                  {profile.tempatIbadah.nama}
+                </span>
+              )}
             </div>
           </div>
         </div>
       </div>
+
+      {/* Tempat Ibadah card */}
+      {profile.tempatIbadah ? (
+        <section className="bg-white rounded-xl border border-gray-200 mb-5 overflow-hidden">
+          <header className="px-6 py-4 border-b border-gray-100">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-lg bg-teal-50 flex items-center justify-center flex-shrink-0">
+                <Building2 size={18} className="text-teal-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-gray-900">Tempat Ibadah</h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Akun Anda terhubung ke tempat ibadah berikut
+                </p>
+              </div>
+              <span
+                className={`text-xs font-medium px-2 py-0.5 rounded-full ring-1 ${
+                  profile.tempatIbadah.status === 'AKTIF'
+                    ? 'bg-emerald-50 text-emerald-700 ring-emerald-100'
+                    : 'bg-gray-100 text-gray-600 ring-gray-200'
+                }`}
+              >
+                {profile.tempatIbadah.status}
+              </span>
+            </div>
+          </header>
+
+          <div className="p-6">
+            <div className="flex items-start gap-4">
+              {profile.tempatIbadah.logo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={profile.tempatIbadah.logo}
+                  alt={profile.tempatIbadah.nama}
+                  className="w-14 h-14 rounded-lg object-cover ring-1 ring-gray-200 flex-shrink-0"
+                />
+              ) : (
+                <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-teal-100 to-teal-50 flex items-center justify-center ring-1 ring-teal-100 flex-shrink-0">
+                  <Building2 size={24} className="text-teal-600" />
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <h4 className="text-base font-semibold text-gray-900 truncate">
+                  {profile.tempatIbadah.nama}
+                </h4>
+                <p className="text-xs text-gray-400 font-mono mt-0.5">
+                  {profile.tempatIbadah.slug}
+                </p>
+                {profile.religion && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Agama: <span className="text-gray-700 font-medium">{profile.religion.nama}</span>
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {(profile.tempatIbadah.alamat ||
+              profile.tempatIbadah.kota ||
+              profile.tempatIbadah.noTelp ||
+              profile.tempatIbadah.email) && (
+              <dl className="mt-5 pt-5 border-t border-gray-100 space-y-3">
+                {(profile.tempatIbadah.alamat || profile.tempatIbadah.kota) && (
+                  <div className="flex items-start gap-2 text-sm">
+                    <MapPin size={14} className="text-gray-400 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1 text-gray-700">
+                      {profile.tempatIbadah.alamat && <div>{profile.tempatIbadah.alamat}</div>}
+                      {(profile.tempatIbadah.kota || profile.tempatIbadah.provinsi) && (
+                        <div className="text-gray-500 text-xs mt-0.5">
+                          {[profile.tempatIbadah.kota, profile.tempatIbadah.provinsi]
+                            .filter(Boolean)
+                            .join(', ')}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {profile.tempatIbadah.noTelp && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Phone size={14} className="text-gray-400 flex-shrink-0" />
+                    <a
+                      href={`tel:${profile.tempatIbadah.noTelp}`}
+                      className="text-gray-700 hover:text-primary"
+                    >
+                      {profile.tempatIbadah.noTelp}
+                    </a>
+                  </div>
+                )}
+                {profile.tempatIbadah.email && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Mail size={14} className="text-gray-400 flex-shrink-0" />
+                    <a
+                      href={`mailto:${profile.tempatIbadah.email}`}
+                      className="text-gray-700 hover:text-primary truncate"
+                    >
+                      {profile.tempatIbadah.email}
+                    </a>
+                  </div>
+                )}
+              </dl>
+            )}
+          </div>
+        </section>
+      ) : profile.role !== 'SUPERADMIN' ? (
+        <section className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-5 flex gap-3">
+          <Building2 size={20} className="text-amber-600 flex-shrink-0 mt-0.5" />
+          <div className="text-sm">
+            <p className="font-medium text-amber-800">Belum terhubung ke tempat ibadah</p>
+            <p className="text-xs text-amber-700 mt-0.5">
+              Akun Anda belum dikaitkan ke tempat ibadah manapun. Hubungi pengurus atau Super Admin
+              untuk diatur.
+            </p>
+          </div>
+        </section>
+      ) : (
+        <section className="bg-violet-50 border border-violet-200 rounded-xl p-4 mb-5 flex gap-3">
+          <Shield size={20} className="text-violet-600 flex-shrink-0 mt-0.5" />
+          <div className="text-sm">
+            <p className="font-medium text-violet-800">Akses Super Admin — Lintas Tenant</p>
+            <p className="text-xs text-violet-700 mt-0.5">
+              Sebagai Super Admin, akun Anda tidak terikat ke satu tempat ibadah tertentu dan dapat
+              mengelola semua tempat ibadah dalam sistem.
+            </p>
+          </div>
+        </section>
+      )}
 
       {/* Informasi Akun */}
       <section className="bg-white rounded-xl border border-gray-200 mb-5 overflow-hidden">
@@ -311,6 +457,22 @@ export default function ProfilPage() {
                 Agama
               </dt>
               <dd className="text-sm font-medium text-gray-900">{profile.religion.nama}</dd>
+            </div>
+          )}
+          {profile.tempatIbadah && (
+            <div className="flex items-center justify-between px-6 py-3.5">
+              <dt className="flex items-center gap-2 text-sm text-gray-500">
+                <Building2 size={14} className="text-gray-400" />
+                Tempat Ibadah
+              </dt>
+              <dd className="text-sm font-medium text-gray-900 text-right">
+                {profile.tempatIbadah.nama}
+                {profile.tempatIbadah.kota && (
+                  <span className="block text-xs text-gray-500 font-normal mt-0.5">
+                    {profile.tempatIbadah.kota}
+                  </span>
+                )}
+              </dd>
             </div>
           )}
           <div className="flex items-center justify-between px-6 py-3.5">

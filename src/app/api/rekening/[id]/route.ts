@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { rekeningUpdateSchema } from '@/lib/validations/rekening'
+import { validateScopeUpdate, isScopeError } from '@/lib/scope'
 
 function canManageRekening(session: { user: { role: string; subRole?: string | null } } | null) {
   if (!session) return false
@@ -19,13 +20,13 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
   const rekening = await prisma.rekening.findUnique({
     where: { id },
-    include: { religion: { select: { id: true, nama: true } } },
+    include: { religion: { select: { id: true, nama: true } }, tempatIbadah: { select: { id: true, nama: true, slug: true } } },
   })
   if (!rekening) return NextResponse.json({ error: 'Rekening tidak ditemukan' }, { status: 404 })
 
   if (
     session.user.role !== 'SUPERADMIN' &&
-    rekening.religionId !== session.user.religionId
+    rekening.tempatIbadahId !== session.user.tempatIbadahId
   ) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
@@ -46,7 +47,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   const rekening = await prisma.rekening.findUnique({ where: { id } })
   if (!rekening) return NextResponse.json({ error: 'Rekening tidak ditemukan' }, { status: 404 })
 
-  if (session.user.role === 'PENGURUS' && rekening.religionId !== session.user.religionId) {
+  if (session.user.role === 'PENGURUS' && rekening.tempatIbadahId !== session.user.tempatIbadahId) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -56,7 +57,16 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
   }
 
-  const updateData: Record<string, unknown> = { ...parsed.data }
+  const scopeRes = await validateScopeUpdate(
+    session,
+    { religionId: rekening.religionId, tempatIbadahId: rekening.tempatIbadahId },
+    { religionId: parsed.data.religionId, tempatIbadahId: parsed.data.tempatIbadahId }
+  )
+  if (isScopeError(scopeRes)) {
+    return NextResponse.json({ error: scopeRes.error }, { status: scopeRes.status })
+  }
+
+  const updateData: Record<string, unknown> = { ...parsed.data, ...scopeRes }
   if (updateData.catatan === '') updateData.catatan = null
 
   const updated = await prisma.rekening.update({ where: { id }, data: updateData })
@@ -87,7 +97,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   const rekening = await prisma.rekening.findUnique({ where: { id } })
   if (!rekening) return NextResponse.json({ error: 'Rekening tidak ditemukan' }, { status: 404 })
 
-  if (session.user.role === 'PENGURUS' && rekening.religionId !== session.user.religionId) {
+  if (session.user.role === 'PENGURUS' && rekening.tempatIbadahId !== session.user.tempatIbadahId) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 

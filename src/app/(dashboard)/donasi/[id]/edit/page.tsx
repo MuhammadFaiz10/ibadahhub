@@ -12,7 +12,7 @@ import { donasiUpdateSchema, type DonasiUpdateInput } from '@/lib/validations/do
 import { PageHeader } from '@/components/shared/PageHeader'
 import { FileUploadField } from '@/components/shared/FileUploadField'
 
-interface AgamaOption { id: number; nama: string }
+import { ScopeSelector } from '@/components/shared/ScopeSelector'
 
 const metodeOptions = [
   { value: 'TRANSFER_BANK', label: 'Transfer Bank' },
@@ -25,8 +25,6 @@ export default function DonasiEditPage() {
   const params = useParams<{ id: string }>()
   const { data: session } = useSession()
   const isSuperAdmin = session?.user.role === 'SUPERADMIN'
-  const [agamaList, setAgamaList] = useState<AgamaOption[]>([])
-
   const {
     register,
     handleSubmit,
@@ -37,25 +35,25 @@ export default function DonasiEditPage() {
   } = useForm<DonasiUpdateInput>({ resolver: zodResolver(donasiUpdateSchema) })
 
   useEffect(() => {
-    Promise.all([
-      axios.get(`/api/donasi/${params.id}`),
-      axios.get('/api/agama/public'),
-    ]).then(([dRes, agamaRes]) => {
-      const d = dRes.data.data
-      setAgamaList(agamaRes.data.data)
-      reset({
-        namaDonatur: d.namaDonatur,
-        nominal: Number(d.nominal),
-        tanggal: new Date(d.tanggal).toISOString().slice(0, 10),
-        metodePembayaran: d.metodePembayaran,
-        catatan: d.catatan ?? '',
-        buktiPembayaran: d.buktiPembayaran ?? '',
-        religionId: d.religionId,
+    axios
+      .get(`/api/donasi/${params.id}`)
+      .then((res) => {
+        const d = res.data.data
+        reset({
+          namaDonatur: d.namaDonatur,
+          nominal: Number(d.nominal),
+          tanggal: new Date(d.tanggal).toISOString().slice(0, 10),
+          metodePembayaran: d.metodePembayaran,
+          catatan: d.catatan ?? '',
+          buktiPembayaran: d.buktiPembayaran ?? '',
+          religionId: d.religionId,
+          tempatIbadahId: d.tempatIbadahId,
+        })
       })
-    }).catch(() => {
-      toast.error('Gagal memuat data')
-      router.push('/donasi')
-    })
+      .catch(() => {
+        toast.error('Gagal memuat data')
+        router.push('/donasi')
+      })
   }, [params.id, reset, router])
 
   async function onSubmit(data: DonasiUpdateInput) {
@@ -123,14 +121,16 @@ export default function DonasiEditPage() {
           </div>
 
           {isSuperAdmin && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Agama</label>
-              <select {...register('religionId', { valueAsNumber: true })}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary">
-                <option value="">-- Pilih Agama --</option>
-                {agamaList.map((a) => <option key={a.id} value={a.id}>{a.nama}</option>)}
-              </select>
-            </div>
+            <ScopeSelector
+              religionId={watch('religionId')}
+              tempatIbadahId={watch('tempatIbadahId')}
+              onChange={({ religionId, tempatIbadahId }) => {
+                setValue('religionId', religionId)
+                setValue('tempatIbadahId', tempatIbadahId)
+              }}
+              errorReligion={errors.religionId?.message}
+              errorTempatIbadah={errors.tempatIbadahId?.message}
+            />
           )}
 
           <div className="flex gap-3 pt-2">

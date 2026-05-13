@@ -12,7 +12,7 @@ import { donasiCreateSchema, type DonasiCreateInput } from '@/lib/validations/do
 import { PageHeader } from '@/components/shared/PageHeader'
 import { FileUploadField } from '@/components/shared/FileUploadField'
 
-interface AgamaOption { id: number; nama: string }
+import { ScopeSelector } from '@/components/shared/ScopeSelector'
 interface RekeningInfo {
   id: number
   namaBank: string
@@ -47,7 +47,6 @@ export default function DonasiBaruPage() {
   const role = session?.user.role
   const isSuperAdmin = role === 'SUPERADMIN'
   const isJemaah = role === 'JEMAAH'
-  const [agamaList, setAgamaList] = useState<AgamaOption[]>([])
   const [rekeningList, setRekeningList] = useState<RekeningInfo[]>([])
 
   const {
@@ -68,10 +67,12 @@ export default function DonasiBaruPage() {
     if (!isSuperAdmin && session?.user.religionId) {
       setValue('religionId', session.user.religionId)
     }
+    if (!isSuperAdmin && session?.user.tempatIbadahId) {
+      setValue('tempatIbadahId', session.user.tempatIbadahId)
+    }
     if (isJemaah && session?.user.name) {
       setValue('namaDonatur', session.user.name)
     }
-    axios.get('/api/agama/public').then((r) => setAgamaList(r.data.data))
     // Tarik daftar rekening — JEMAAH juga bisa lihat rekening AKTIF di religion-nya
     axios.get('/api/rekening?limit=50').then((r) => {
       setRekeningList(r.data.data ?? [])
@@ -242,17 +243,16 @@ export default function DonasiBaruPage() {
           </div>
 
           {isSuperAdmin && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Agama</label>
-              <select
-                {...register('religionId', { valueAsNumber: true })}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                <option value="">-- Pilih Agama --</option>
-                {agamaList.map((a) => <option key={a.id} value={a.id}>{a.nama}</option>)}
-              </select>
-              {errors.religionId && <p className="mt-1 text-xs text-red-600">{errors.religionId.message}</p>}
-            </div>
+            <ScopeSelector
+              religionId={watch('religionId')}
+              tempatIbadahId={watch('tempatIbadahId')}
+              onChange={({ religionId, tempatIbadahId }) => {
+                setValue('religionId', religionId as number)
+                setValue('tempatIbadahId', tempatIbadahId)
+              }}
+              errorReligion={errors.religionId?.message}
+              errorTempatIbadah={errors.tempatIbadahId?.message}
+            />
           )}
 
           <div className="flex gap-3 pt-2">

@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
-import { Bell, ChevronDown, LogOut, User, Menu } from 'lucide-react'
+import { Bell, ChevronDown, LogOut, User, Menu, Building2 } from 'lucide-react'
 import { useState } from 'react'
 import Link from 'next/link'
 import { cn, getInisial } from '@/lib/utils'
@@ -86,7 +86,24 @@ export function TopBar({ session, onMenuClick }: TopBarProps) {
           {dropdownOpen && (
             <>
               <div className="fixed inset-0 z-10" onClick={() => setDropdownOpen(false)} />
-              <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-lg border border-gray-200 py-1 z-20">
+              <div className="absolute right-0 top-full mt-1 w-64 bg-white rounded-xl shadow-lg border border-gray-200 py-1 z-20">
+                {/* Header: nama + role + tempat ibadah */}
+                <div className="px-4 py-3 border-b border-gray-100">
+                  <p className="text-sm font-semibold text-gray-900 truncate">
+                    {session.user.name}
+                  </p>
+                  <p className="text-xs text-gray-500 truncate">{session.user.email}</p>
+                  {session.user.tempatIbadahNama ? (
+                    <div className="mt-2 flex items-center gap-1.5 text-xs text-teal-700 bg-teal-50 px-2 py-1 rounded-md ring-1 ring-teal-100">
+                      <Building2 size={11} className="flex-shrink-0" />
+                      <span className="truncate">{session.user.tempatIbadahNama}</span>
+                    </div>
+                  ) : session.user.role === 'SUPERADMIN' ? (
+                    <div className="mt-2 inline-flex items-center gap-1.5 text-xs text-violet-700 bg-violet-50 px-2 py-1 rounded-md ring-1 ring-violet-100">
+                      Lintas tenant
+                    </div>
+                  ) : null}
+                </div>
                 <Link
                   href="/profil"
                   onClick={() => setDropdownOpen(false)}

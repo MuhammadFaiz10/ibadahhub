@@ -7,6 +7,11 @@ export const pengurusCreateSchema = z.object({
     errorMap: () => ({ message: 'Sub role tidak valid' }),
   }),
   religionId: z.number({ required_error: 'Agama wajib dipilih' }).int().positive('Agama tidak valid'),
+  tempatIbadahId: z
+    .number({ required_error: 'Tempat ibadah wajib dipilih' })
+    .int()
+    .positive('Tempat ibadah tidak valid')
+    .optional(),
 })
 
 export const pengurusUpdateSchema = pengurusCreateSchema.partial()

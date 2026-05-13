@@ -5,6 +5,11 @@ export const pengumumanCreateSchema = z.object({
     .number({ required_error: 'Agama wajib dipilih' })
     .int()
     .positive('Agama tidak valid'),
+  tempatIbadahId: z
+    .number({ required_error: 'Tempat ibadah wajib dipilih' })
+    .int()
+    .positive('Tempat ibadah tidak valid')
+    .optional(),
   judul: z.string().min(2, 'Judul minimal 2 karakter').max(200),
   isi: z.string().min(10, 'Isi pengumuman minimal 10 karakter'),
   tanggalPublish: z.string().optional(),

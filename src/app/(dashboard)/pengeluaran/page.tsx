@@ -8,6 +8,7 @@ import { Plus, RotateCcw, Pencil, Trash2, Archive, TrendingDown } from 'lucide-r
 import { useSession } from 'next-auth/react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { SearchFilter } from '@/components/shared/SearchFilter'
+import { ScopeFilter } from '@/components/shared/ScopeFilter'
 import { DataTable, type ColumnDef } from '@/components/shared/DataTable'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { formatRupiah, formatTanggal } from '@/lib/utils'
@@ -21,8 +22,10 @@ interface Pengeluaran {
   kategori: string
   bukti: string | null
   religionId: number
+  tempatIbadahId: number | null
   deletedAt: string | null
   religion: { nama: string } | null
+  tempatIbadah: { nama: string; slug: string } | null
   user: { nama: string } | null
 }
 
@@ -38,6 +41,7 @@ export default function PengeluaranPage() {
   const { data: session } = useSession()
   const role = session?.user.role
   const subRole = session?.user.subRole
+  const isSuperAdmin = role === 'SUPERADMIN'
   const canManage =
     role === 'SUPERADMIN' || (role === 'PENGURUS' && (subRole === 'KETUA' || subRole === 'BENDAHARA'))
 
@@ -46,11 +50,15 @@ export default function PengeluaranPage() {
   const [limit, setLimit] = useState(10)
   const [showArsip, setShowArsip] = useState(false)
   const [kategori, setKategori] = useState('')
+  const [filterReligionId, setFilterReligionId] = useState<number | undefined>(undefined)
+  const [filterTempatIbadahId, setFilterTempatIbadahId] = useState<number | undefined>(undefined)
   const [deleteTarget, setDeleteTarget] = useState<Pengeluaran | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
   const { data, total, isLoading, mutate } = useDataFetch<Pengeluaran>('/api/pengeluaran', {
     search, page, limit, arsip: showArsip, kategori,
+    religionId: filterReligionId,
+    tempatIbadahId: filterTempatIbadahId,
   })
 
   const handleDelete = useCallback(async (alasan: string) => {
@@ -113,6 +121,17 @@ export default function PengeluaranPage() {
       render: (r) => <span className="text-gray-600">{r.religion?.nama ?? '—'}</span>,
     },
     {
+      key: 'tempatIbadah', header: 'Tempat Ibadah',
+      render: (r) => (
+        <div className="text-sm">
+          <div className="text-gray-700">{r.tempatIbadah?.nama ?? '—'}</div>
+          {r.tempatIbadah?.slug && (
+            <div className="text-[11px] text-gray-400 font-mono">{r.tempatIbadah.slug}</div>
+          )}
+        </div>
+      ),
+    },
+    {
       key: 'actions', header: 'Aksi',
       render: (r) => canManage ? (
         <div className="flex items-center gap-2">
@@ -165,6 +184,17 @@ export default function PengeluaranPage() {
         >
           {kategoriOptions.map((k) => <option key={k.value} value={k.value}>{k.label}</option>)}
         </select>
+        {isSuperAdmin && (
+          <ScopeFilter
+            religionId={filterReligionId}
+            tempatIbadahId={filterTempatIbadahId}
+            onChange={({ religionId, tempatIbadahId }) => {
+              setFilterReligionId(religionId)
+              setFilterTempatIbadahId(tempatIbadahId)
+              setPage(1)
+            }}
+          />
+        )}
         <button
           onClick={() => { setShowArsip(!showArsip); setPage(1) }}
           className={`flex items-center gap-2 px-3 py-2 text-sm border rounded-lg transition-colors ${

@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 export const rekeningCreateSchema = z.object({
   religionId: z.number({ required_error: 'Agama wajib dipilih' }).int().positive(),
+  tempatIbadahId: z.number().int().positive('Tempat ibadah tidak valid').optional(),
   namaBank: z.string().min(2, 'Nama bank minimal 2 karakter').max(100),
   nomorRekening: z.string().min(5, 'Nomor rekening minimal 5 karakter').max(50),
   namaPemilik: z.string().min(2, 'Nama pemilik minimal 2 karakter').max(100),

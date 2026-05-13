@@ -31,10 +31,18 @@ export async function GET(req: NextRequest) {
   const page = Math.max(1, Number(searchParams.get('page') ?? 1))
   const limit = Math.min(50, Math.max(1, Number(searchParams.get('limit') ?? 10)))
 
-  const religionId = isSuperAdmin ? undefined : (session.user.religionId ?? undefined)
+  const religionIdQ = searchParams.get('religionId')
+  const tempatIbadahIdQ = searchParams.get('tempatIbadahId')
+  const religionId = isSuperAdmin
+    ? religionIdQ ? Number(religionIdQ) : undefined
+    : (session.user.religionId ?? undefined)
+  const tempatIbadahId = isSuperAdmin
+    ? tempatIbadahIdQ ? Number(tempatIbadahIdQ) : undefined
+    : (session.user.tempatIbadahId ?? undefined)
 
   const where = {
     ...(religionId !== undefined ? { religionId } : {}),
+    ...(tempatIbadahId !== undefined ? { tempatIbadahId } : {}),
     // JEMAAH hanya boleh lihat rekening AKTIF
     ...(isJemaah ? { status: 'AKTIF' as const } : {}),
     ...(search
@@ -54,7 +62,10 @@ export async function GET(req: NextRequest) {
       skip: (page - 1) * limit,
       take: limit,
       orderBy: { createdAt: 'desc' },
-      include: { religion: { select: { nama: true } } },
+      include: {
+        religion: { select: { nama: true } },
+        tempatIbadah: { select: { nama: true, slug: true } },
+      },
     }),
     prisma.rekening.count({ where }),
   ])
@@ -78,10 +89,28 @@ export async function POST(req: NextRequest) {
   }
 
   const safeReligionId = isSuperAdmin ? parsed.data.religionId : session.user.religionId!
+  const safeTempatIbadahId = isSuperAdmin
+    ? parsed.data.tempatIbadahId
+    : session.user.tempatIbadahId!
+  if (!safeTempatIbadahId) {
+    return NextResponse.json({ error: 'Tempat ibadah wajib dipilih' }, { status: 400 })
+  }
+
   const religion = await prisma.religion.findUnique({
     where: { id: safeReligionId, deletedAt: null },
   })
   if (!religion) return NextResponse.json({ error: 'Agama tidak ditemukan' }, { status: 404 })
+
+  const ti = await prisma.tempatIbadah.findUnique({ where: { id: safeTempatIbadahId } })
+  if (!ti || ti.deletedAt) {
+    return NextResponse.json({ error: 'Tempat ibadah tidak ditemukan' }, { status: 404 })
+  }
+  if (ti.religionId !== safeReligionId) {
+    return NextResponse.json(
+      { error: 'Tempat ibadah tidak sesuai dengan agama' },
+      { status: 400 }
+    )
+  }
 
   const rekening = await prisma.rekening.create({
     data: {
@@ -91,6 +120,7 @@ export async function POST(req: NextRequest) {
       catatan: parsed.data.catatan || null,
       status: parsed.data.status ?? 'AKTIF',
       religionId: safeReligionId,
+      tempatIbadahId: safeTempatIbadahId,
     },
   })
 

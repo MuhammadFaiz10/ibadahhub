@@ -6,6 +6,8 @@ declare module 'next-auth' {
     subRole?: SubRole | null
     religionId?: number | null
     religionName?: string | null
+    tempatIbadahId?: number | null
+    tempatIbadahNama?: string | null
   }
   interface Session {
     user: {
@@ -16,6 +18,8 @@ declare module 'next-auth' {
       subRole?: SubRole | null
       religionId?: number | null
       religionName?: string | null
+      tempatIbadahId?: number | null
+      tempatIbadahNama?: string | null
     }
   }
 }
@@ -26,6 +30,8 @@ declare module 'next-auth/jwt' {
     subRole?: SubRole | null
     religionId?: number | null
     religionName?: string | null
+    tempatIbadahId?: number | null
+    tempatIbadahNama?: string | null
     lastActivity?: number
   }
 }

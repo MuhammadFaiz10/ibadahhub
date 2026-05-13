@@ -1,6 +1,14 @@
 // IbadahHub - Entity Relationship Diagram
 // Source: Prisma migrations (PostgreSQL)
 // Format: DBML — paste ke https://dbdiagram.io
+//
+// Multi-tenant model:
+//   Religion (1) ──< TempatIbadah (1) ──< User / Jemaah / Kegiatan / Pengumuman /
+//                                          Donasi / Pengeluaran / Rekening
+//
+// Semua resource operasional terikat ke `tempatIbadahId` (NOT NULL kecuali User).
+// `religionId` di tabel anak di-denormalisasi (redundan tapi konsisten) untuk
+// performa query — selalu sama dengan `TempatIbadah.religionId` rekord induknya.
 
 //// ------------------------------------------
 //// ENUMS
@@ -35,6 +43,7 @@ Enum MetodePembayaran {
   TRANSFER_BANK
   TUNAI
   QRIS
+  MIDTRANS
 }
 
 Enum StatusPengumuman {
@@ -62,6 +71,11 @@ Enum StatusPendaftaran {
   BATAL
 }
 
+Enum StatusTempatIbadah {
+  AKTIF
+  NONAKTIF
+}
+
 //// ------------------------------------------
 //// TABLES
 //// ------------------------------------------
@@ -75,20 +89,47 @@ Table Religion {
   deletedAt   timestamp   [null, note: 'soft delete']
 }
 
+Table TempatIbadah {
+  id          int                [pk, increment]
+  religionId  int                [not null, ref: > Religion.id]
+  nama        text               [not null]
+  slug        text               [unique, not null, note: 'URL-friendly, contoh: masjid-al-hikmah']
+  alamat      text               [null]
+  kota        text               [null]
+  provinsi    text               [null]
+  kodePos     text               [null]
+  noTelp      text               [null]
+  email       text               [null]
+  logo        text               [null, note: 'URL logo']
+  deskripsi   text               [null]
+  latitude    decimal(10,7)      [null]
+  longitude   decimal(10,7)      [null]
+  status      StatusTempatIbadah [not null, default: 'AKTIF']
+  createdBy   int                [null, note: 'User ID SUPERADMIN yang membuat, no DB-level FK']
+  createdAt   timestamp          [not null, default: `now()`]
+  updatedAt   timestamp          [not null]
+  deletedAt   timestamp          [null, note: 'soft delete (arsip)']
+
+  indexes {
+    religionId
+  }
+}
+
 Table User {
-  id            int       [pk, increment]
-  nama          text      [not null]
-  email         text      [unique, not null]
-  password      text      [not null]
-  role          Role      [not null]
-  subRole       SubRole   [null]
-  religionId    int       [null, ref: > Religion.id]
-  fotoProfil    text      [null]
-  status        boolean   [not null, default: true]
-  emailVerified timestamp [null]
-  createdAt     timestamp [not null, default: `now()`]
-  updatedAt     timestamp [not null]
-  deletedAt     timestamp [null, note: 'soft delete']
+  id             int       [pk, increment]
+  nama           text      [not null]
+  email          text      [unique, not null]
+  password       text      [not null]
+  role           Role      [not null]
+  subRole        SubRole   [null]
+  religionId     int       [null, ref: > Religion.id]
+  tempatIbadahId int       [null, ref: > TempatIbadah.id, note: 'NULL untuk SUPERADMIN; required untuk PENGURUS/JEMAAH']
+  fotoProfil     text      [null]
+  status         boolean   [not null, default: true]
+  emailVerified  timestamp [null]
+  createdAt      timestamp [not null, default: `now()`]
+  updatedAt      timestamp [not null]
+  deletedAt      timestamp [null, note: 'soft delete']
 }
 
 Table Session {
@@ -109,23 +150,29 @@ Table VerificationToken {
 }
 
 Table Jemaah {
-  id         int       [pk, increment]
-  userId     int       [unique, null, ref: > User.id]
-  religionId int       [not null, ref: > Religion.id]
-  nama       text      [not null]
-  email      text      [null]
-  noHp       text      [null]
-  alamat     text      [null]
-  status     boolean   [not null, default: true]
-  createdAt  timestamp [not null, default: `now()`]
-  updatedAt  timestamp [not null]
-  deletedAt  timestamp [null, note: 'soft delete']
+  id             int       [pk, increment]
+  userId         int       [unique, null, ref: > User.id]
+  religionId     int       [not null, ref: > Religion.id]
+  tempatIbadahId int       [not null, ref: > TempatIbadah.id]
+  nama           text      [not null]
+  email          text      [null]
+  noHp           text      [null]
+  alamat         text      [null]
+  status         boolean   [not null, default: true]
+  createdAt      timestamp [not null, default: `now()`]
+  updatedAt      timestamp [not null]
+  deletedAt      timestamp [null, note: 'soft delete']
+
+  indexes {
+    tempatIbadahId
+  }
 }
 
 Table Kegiatan {
-  id            int            [pk, increment]
-  religionId    int            [not null, ref: > Religion.id]
-  namaKegiatan  text           [not null]
+  id             int            [pk, increment]
+  religionId     int            [not null, ref: > Religion.id]
+  tempatIbadahId int            [not null, ref: > TempatIbadah.id]
+  namaKegiatan   text           [not null]
   tanggal       timestamp      [not null]
   waktuMulai    text           [not null]
   waktuSelesai  text           [null]
@@ -138,6 +185,10 @@ Table Kegiatan {
   updatedAt     timestamp      [not null]
   deletedAt     timestamp      [null, note: 'soft delete']
   deletedReason text           [null]
+
+  indexes {
+    tempatIbadahId
+  }
 }
 
 Table KegiatanPendaftaran {
@@ -157,6 +208,7 @@ Table KegiatanPendaftaran {
 Table Pengumuman {
   id             int              [pk, increment]
   religionId     int              [not null, ref: > Religion.id]
+  tempatIbadahId int              [not null, ref: > TempatIbadah.id]
   judul          text             [not null]
   isi            text             [not null, note: 'TEXT (full text)']
   tanggalPublish timestamp        [not null, default: `now()`]
@@ -167,6 +219,10 @@ Table Pengumuman {
   updatedAt      timestamp        [not null]
   deletedAt      timestamp        [null, note: 'soft delete']
   deletedReason  text             [null]
+
+  indexes {
+    tempatIbadahId
+  }
 }
 
 Table PengumumanLampiran {
@@ -181,6 +237,7 @@ Table PengumumanLampiran {
 Table Donasi {
   id               int              [pk, increment]
   religionId       int              [not null, ref: > Religion.id]
+  tempatIbadahId   int              [not null, ref: > TempatIbadah.id]
   userId           int              [null, ref: > User.id]
   jemaahId         int              [null, ref: > Jemaah.id]
   rekeningId       int              [null, ref: > Rekening.id]
@@ -193,16 +250,27 @@ Table Donasi {
   buktiPembayaran  text             [null]
   dikonfirmasiOleh int              [null, ref: > User.id]
   dikonfirmasiAt   timestamp        [null]
+  midtransOrderId  text             [unique, null]
+  midtransToken    text             [null]
+  midtransPaymentUrl text           [null]
+  midtransStatus   text             [null]
+  midtransTransactionId text        [null]
+  paymentChannel   text             [null, note: 'mis. "GoPay", "BCA Virtual Account", "manual_paid"']
   createdAt        timestamp        [not null, default: `now()`]
   updatedAt        timestamp        [not null]
   deletedAt        timestamp        [null, note: 'soft delete']
   deletedReason    text             [null]
+
+  indexes {
+    tempatIbadahId
+  }
 }
 
 Table Pengeluaran {
-  id            int                 [pk, increment]
-  religionId    int                 [not null, ref: > Religion.id]
-  keterangan    text                [not null]
+  id             int                 [pk, increment]
+  religionId     int                 [not null, ref: > Religion.id]
+  tempatIbadahId int                 [not null, ref: > TempatIbadah.id]
+  keterangan     text                [not null]
   nominal       decimal(15,2)       [not null]
   tanggal       timestamp           [not null]
   kategori      KategoriPengeluaran [not null]
@@ -212,18 +280,27 @@ Table Pengeluaran {
   updatedAt     timestamp           [not null]
   deletedAt     timestamp           [null, note: 'soft delete']
   deletedReason text                [null]
+
+  indexes {
+    tempatIbadahId
+  }
 }
 
 Table Rekening {
-  id            int            [pk, increment]
-  religionId    int            [not null, ref: > Religion.id]
-  namaBank      text           [not null]
-  nomorRekening text           [not null]
-  namaPemilik   text           [not null]
-  catatan       text           [null]
-  status        StatusRekening [not null, default: 'AKTIF']
-  createdAt     timestamp      [not null, default: `now()`]
-  updatedAt     timestamp      [not null]
+  id             int            [pk, increment]
+  religionId     int            [not null, ref: > Religion.id]
+  tempatIbadahId int            [not null, ref: > TempatIbadah.id]
+  namaBank       text           [not null]
+  nomorRekening  text           [not null]
+  namaPemilik    text           [not null]
+  catatan        text           [null]
+  status         StatusRekening [not null, default: 'AKTIF']
+  createdAt      timestamp      [not null, default: `now()`]
+  updatedAt      timestamp      [not null]
+
+  indexes {
+    tempatIbadahId
+  }
 }
 
 Table Notifikasi {

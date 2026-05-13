@@ -11,6 +11,7 @@ const registerSchema = z.object({
   email: z.string().email('Format email tidak valid'),
   password: z.string().min(8, 'Password minimal 8 karakter'),
   religionId: z.number().int().positive('Agama wajib dipilih'),
+  tempatIbadahId: z.number().int().positive('Tempat ibadah wajib dipilih'),
   noHp: z.string().optional(),
   alamat: z.string().optional(),
 })
@@ -50,6 +51,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Agama tidak ditemukan' }, { status: 404 })
   }
 
+  const tempatIbadah = await prisma.tempatIbadah.findUnique({
+    where: { id: parsed.data.tempatIbadahId },
+  })
+  if (!tempatIbadah || tempatIbadah.deletedAt || tempatIbadah.status !== 'AKTIF') {
+    return NextResponse.json({ error: 'Tempat ibadah tidak ditemukan / nonaktif' }, { status: 404 })
+  }
+  if (tempatIbadah.religionId !== parsed.data.religionId) {
+    return NextResponse.json({ error: 'Tempat ibadah tidak sesuai dengan agama' }, { status: 400 })
+  }
+
   const hashed = await bcrypt.hash(parsed.data.password, 12)
 
   const user = await prisma.user.create({
@@ -59,6 +70,7 @@ export async function POST(req: NextRequest) {
       password: hashed,
       role: 'JEMAAH',
       religionId: parsed.data.religionId,
+      tempatIbadahId: parsed.data.tempatIbadahId,
       status: true,
       // emailVerified: null  → biar harus verifikasi via email
     },
@@ -68,6 +80,7 @@ export async function POST(req: NextRequest) {
     data: {
       userId: user.id,
       religionId: parsed.data.religionId,
+      tempatIbadahId: parsed.data.tempatIbadahId,
       nama: parsed.data.nama,
       email,
       noHp: parsed.data.noHp,

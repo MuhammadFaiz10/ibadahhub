@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 export const donasiCreateSchema = z.object({
   religionId: z.number().int().positive().optional(),
+  tempatIbadahId: z.number().int().positive('Tempat ibadah tidak valid').optional(),
   jemaahId: z.coerce.number().int().positive().optional().nullable(),
   rekeningId: z.coerce.number().int().positive().optional().nullable(),
   namaDonatur: z.string().min(2, 'Nama donatur minimal 2 karakter').max(100),

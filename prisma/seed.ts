@@ -26,6 +26,36 @@ async function main() {
   const religions = await prisma.religion.findMany({ where: { deletedAt: null } })
   const byNama = Object.fromEntries(religions.map((r) => [r.nama, r]))
 
+  // 1b) TempatIbadah default per agama (idempotent berdasarkan slug)
+  const tempatIbadahTemplate: Record<string, { nama: string; slug: string; kota: string }> = {
+    Islam:   { nama: 'Masjid Al-Hikmah',     slug: 'masjid-al-hikmah',     kota: 'Jakarta' },
+    Kristen: { nama: 'Gereja St. Maria',      slug: 'gereja-st-maria',      kota: 'Surabaya' },
+    Hindu:   { nama: 'Pura Agung Jagatnatha', slug: 'pura-agung-jagatnatha',kota: 'Denpasar' },
+    Buddha:  { nama: 'Vihara Dharma Bakti',   slug: 'vihara-dharma-bakti',  kota: 'Jakarta' },
+  }
+
+  const tempatIbadahByReligionId: Record<number, { id: number; nama: string }> = {}
+  for (const agama of agamaList) {
+    const religion = byNama[agama.nama]
+    if (!religion) throw new Error(`Religion ${agama.nama} tidak ditemukan setelah upsert`)
+    const tpl = tempatIbadahTemplate[agama.nama]
+    if (!tpl) continue
+    const ti = await prisma.tempatIbadah.upsert({
+      where: { slug: tpl.slug },
+      create: {
+        religionId: religion.id,
+        nama: tpl.nama,
+        slug: tpl.slug,
+        kota: tpl.kota,
+        status: 'AKTIF',
+        deskripsi: `Tempat ibadah ${tpl.nama} (seed)`,
+      },
+      update: {},
+    })
+    tempatIbadahByReligionId[religion.id] = { id: ti.id, nama: ti.nama }
+    console.log(`  ✓ TempatIbadah: ${tpl.nama} (${agama.nama})`)
+  }
+
   // Helper upsert user (idempotent berdasarkan email)
   async function upsertUser(opts: {
     nama: string
@@ -34,6 +64,7 @@ async function main() {
     role: Role
     subRole?: SubRole
     religionId?: number
+    tempatIbadahId?: number
   }) {
     const hashed = await bcrypt.hash(opts.password, 12)
     return prisma.user.upsert({
@@ -45,15 +76,19 @@ async function main() {
         role: opts.role,
         subRole: opts.subRole,
         religionId: opts.religionId,
+        tempatIbadahId: opts.tempatIbadahId,
         status: true,
       },
-      update: {},
+      update: {
+        tempatIbadahId: opts.tempatIbadahId,
+      },
     })
   }
 
   // Helper jemaah standalone (idempotent berdasarkan religionId+nama+userId=null)
   async function ensureJemaahStandalone(opts: {
     religionId: number
+    tempatIbadahId: number
     nama: string
     email?: string | null
     noHp?: string | null
@@ -66,6 +101,7 @@ async function main() {
     return prisma.jemaah.create({
       data: {
         religionId: opts.religionId,
+        tempatIbadahId: opts.tempatIbadahId,
         nama: opts.nama,
         email: opts.email ?? null,
         noHp: opts.noHp ?? null,
@@ -104,6 +140,7 @@ async function main() {
         role: 'PENGURUS',
         subRole: t.sub,
         religionId: religion.id,
+        tempatIbadahId: tempatIbadahByReligionId[religion.id]?.id,
       })
       console.log(`  ✓ Pengurus ${t.sub} ${agama.nama}: ${email}`)
     }
@@ -116,12 +153,14 @@ async function main() {
     const slug = agama.nama.toLowerCase()
     for (let i = 1; i <= 2; i++) {
       const email = `jemaah${i}.${slug}@ibadahhub.com`
+      const tiId = tempatIbadahByReligionId[religion.id]?.id
       const user = await upsertUser({
         nama: `Jemaah ${i} ${agama.nama}`,
         email,
         password: 'jemaah123',
         role: 'JEMAAH',
         religionId: religion.id,
+        tempatIbadahId: tiId,
       })
 
       await prisma.jemaah.upsert({
@@ -129,11 +168,14 @@ async function main() {
         create: {
           userId: user.id,
           religionId: religion.id,
+          tempatIbadahId: tiId!,
           nama: user.nama,
           email: user.email,
           status: true,
         },
-        update: {},
+        update: {
+          tempatIbadahId: tiId!,
+        },
       })
       console.log(`  ✓ Jemaah (akun) ${agama.nama}: ${email}`)
     }
@@ -170,6 +212,7 @@ async function main() {
     for (const j of list) {
       await ensureJemaahStandalone({
         religionId: religion.id,
+        tempatIbadahId: tempatIbadahByReligionId[religion.id]!.id,
         nama: j.nama,
         email: j.email,
         noHp: j.noHp,

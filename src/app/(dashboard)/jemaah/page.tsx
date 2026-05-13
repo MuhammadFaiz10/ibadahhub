@@ -25,10 +25,12 @@ interface Jemaah {
   alamat: string | null
   status: boolean
   religionId: number | null
+  tempatIbadahId: number | null
   userId: number | null
   createdAt: string
   deletedAt: string | null
   religion: { nama: string } | null
+  tempatIbadah: { nama: string; slug: string } | null
 }
 
 export default function JemaahPage() {
@@ -139,6 +141,17 @@ export default function JemaahPage() {
     {
       key: 'religion', header: 'Agama',
       render: (r) => <span className="text-gray-600">{r.religion?.nama ?? '—'}</span>,
+    },
+    {
+      key: 'tempatIbadah', header: 'Tempat Ibadah',
+      render: (r) => (
+        <div className="text-sm">
+          <div className="text-gray-700">{r.tempatIbadah?.nama ?? '—'}</div>
+          {r.tempatIbadah?.slug && (
+            <div className="text-[11px] text-gray-400 font-mono">{r.tempatIbadah.slug}</div>
+          )}
+        </div>
+      ),
     },
     {
       key: 'status', header: 'Status',

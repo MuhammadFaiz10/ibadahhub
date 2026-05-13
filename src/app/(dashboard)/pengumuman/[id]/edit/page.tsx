@@ -15,7 +15,7 @@ import {
 import { PageHeader } from '@/components/shared/PageHeader'
 import { RichTextEditor } from '@/components/shared/RichTextEditor'
 
-interface AgamaOption { id: number; nama: string }
+import { ScopeSelector } from '@/components/shared/ScopeSelector'
 
 const statusOptions = [
   { value: 'DRAFT', label: 'Draft' },
@@ -28,7 +28,7 @@ export default function PengumumanEditPage() {
   const params = useParams<{ id: string }>()
   const { data: session } = useSession()
   const isSuperAdmin = session?.user.role === 'SUPERADMIN'
-  const [agamaList, setAgamaList] = useState<AgamaOption[]>([])
+  const [readonly, setReadonly] = useState<{ religion?: string; tempatIbadah?: string }>({})
 
   const {
     register,
@@ -40,24 +40,25 @@ export default function PengumumanEditPage() {
   } = useForm<PengumumanUpdateInput>({ resolver: zodResolver(pengumumanUpdateSchema) })
 
   useEffect(() => {
-    Promise.all([
-      axios.get(`/api/pengumuman/${params.id}`),
-      axios.get('/api/agama/public'),
-    ]).then(([pRes, agamaRes]) => {
-      const d = pRes.data.data
-      setAgamaList(agamaRes.data.data)
-      reset({
-        judul: d.judul,
-        isi: d.isi,
-        tanggalPublish: new Date(d.tanggalPublish).toISOString().slice(0, 10),
-        expireDate: d.expireDate ? new Date(d.expireDate).toISOString().slice(0, 10) : '',
-        status: d.status,
-        religionId: d.religionId,
+    axios
+      .get(`/api/pengumuman/${params.id}`)
+      .then((res) => {
+        const d = res.data.data
+        reset({
+          judul: d.judul,
+          isi: d.isi,
+          tanggalPublish: new Date(d.tanggalPublish).toISOString().slice(0, 10),
+          expireDate: d.expireDate ? new Date(d.expireDate).toISOString().slice(0, 10) : '',
+          status: d.status,
+          religionId: d.religionId,
+          tempatIbadahId: d.tempatIbadahId,
+        })
+        setReadonly({ religion: d.religion?.nama, tempatIbadah: d.tempatIbadah?.nama })
       })
-    }).catch(() => {
-      toast.error('Gagal memuat data')
-      router.push('/pengumuman')
-    })
+      .catch(() => {
+        toast.error('Gagal memuat data')
+        router.push('/pengumuman')
+      })
   }, [params.id, reset, router])
 
   async function onSubmit(data: PengumumanUpdateInput) {
@@ -139,18 +140,29 @@ export default function PengumumanEditPage() {
             </select>
           </div>
 
-          {isSuperAdmin && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Agama</label>
-              <select
-                {...register('religionId', { valueAsNumber: true })}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                <option value="">-- Pilih Agama --</option>
-                {agamaList.map((a) => (
-                  <option key={a.id} value={a.id}>{a.nama}</option>
-                ))}
-              </select>
+          {isSuperAdmin ? (
+            <ScopeSelector
+              religionId={watch('religionId')}
+              tempatIbadahId={watch('tempatIbadahId')}
+              onChange={({ religionId, tempatIbadahId }) => {
+                setValue('religionId', religionId)
+                setValue('tempatIbadahId', tempatIbadahId)
+              }}
+              errorReligion={errors.religionId?.message}
+              errorTempatIbadah={errors.tempatIbadahId?.message}
+            />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Agama</label>
+                <input type="text" value={readonly.religion ?? ''} disabled
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm bg-gray-50 text-gray-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tempat Ibadah</label>
+                <input type="text" value={readonly.tempatIbadah ?? ''} disabled
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm bg-gray-50 text-gray-500" />
+              </div>
             </div>
           )}
 

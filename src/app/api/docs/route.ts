@@ -6,14 +6,21 @@ const spec = {
   openapi: '3.0.3',
   info: {
     title: 'IbadahHub API',
-    version: '1.0.0',
+    version: '2.0.0',
     description:
-      'REST API untuk sistem manajemen ibadah — donasi, kegiatan, jemaah, pengumuman, dan integrasi Midtrans.',
+      'REST API untuk sistem manajemen ibadah multi-tenant — donasi, kegiatan, jemaah, pengumuman, dan integrasi Midtrans.\n\n' +
+      '## Multi-tenant Scope\n' +
+      'Setiap resource operasional terikat pada `tempatIbadahId` (di bawah `religionId`).\n' +
+      '- **SUPERADMIN**: lintas tenant. Saat create harus menyertakan `religionId` + `tempatIbadahId`; saat list bisa filter via query `?religionId=&tempatIbadahId=`.\n' +
+      '- **PENGURUS / JEMAAH**: `religionId` + `tempatIbadahId` di-derive otomatis dari session, payload `religionId/tempatIbadahId` diabaikan.\n' +
+      '- Backend selalu memvalidasi `TempatIbadah.religionId === payload.religionId`.',
   },
   servers: [{ url: APP_URL, description: 'Server aktif' }],
   tags: [
+    { name: 'TempatIbadah', description: 'CRUD tempat ibadah (multi-tenant). SUPERADMIN-only untuk write; pengurus/jemaah bisa GET tempat ibadah di agamanya.' },
     { name: 'Donasi', description: 'CRUD donasi & konfirmasi manual' },
     { name: 'Midtrans', description: 'Integrasi payment gateway Midtrans Snap' },
+    { name: 'Public', description: 'Endpoint publik tanpa autentikasi (dipakai halaman register)' },
   ],
   components: {
     securitySchemes: {
@@ -31,11 +38,77 @@ const spec = {
           error: { type: 'string', example: 'Unauthorized' },
         },
       },
+      TempatIbadah: {
+        type: 'object',
+        properties: {
+          id: { type: 'integer' },
+          religionId: { type: 'integer' },
+          nama: { type: 'string', example: 'Masjid Al-Hikmah' },
+          slug: { type: 'string', example: 'masjid-al-hikmah', description: 'URL-friendly, unik' },
+          alamat: { type: 'string', nullable: true },
+          kota: { type: 'string', nullable: true },
+          provinsi: { type: 'string', nullable: true },
+          kodePos: { type: 'string', nullable: true },
+          noTelp: { type: 'string', nullable: true },
+          email: { type: 'string', format: 'email', nullable: true },
+          logo: { type: 'string', nullable: true, description: 'URL logo' },
+          deskripsi: { type: 'string', nullable: true },
+          latitude: { type: 'number', format: 'double', nullable: true },
+          longitude: { type: 'number', format: 'double', nullable: true },
+          status: { type: 'string', enum: ['AKTIF', 'NONAKTIF'], default: 'AKTIF' },
+          createdBy: { type: 'integer', nullable: true },
+          createdAt: { type: 'string', format: 'date-time' },
+          updatedAt: { type: 'string', format: 'date-time' },
+          deletedAt: { type: 'string', format: 'date-time', nullable: true },
+          religion: {
+            type: 'object',
+            nullable: true,
+            properties: { id: { type: 'integer' }, nama: { type: 'string' } },
+          },
+          _count: {
+            type: 'object',
+            nullable: true,
+            properties: {
+              users: { type: 'integer' },
+              jemaah: { type: 'integer' },
+              kegiatan: { type: 'integer' },
+              donasi: { type: 'integer' },
+            },
+          },
+        },
+      },
+      TempatIbadahInput: {
+        type: 'object',
+        required: ['religionId', 'nama', 'slug'],
+        properties: {
+          religionId: { type: 'integer' },
+          nama: { type: 'string', minLength: 2, maxLength: 150 },
+          slug: {
+            type: 'string',
+            minLength: 2,
+            maxLength: 120,
+            pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$',
+            description: 'Huruf kecil, angka, dan tanda hubung (-) saja',
+          },
+          alamat: { type: 'string', maxLength: 500, nullable: true },
+          kota: { type: 'string', maxLength: 100, nullable: true },
+          provinsi: { type: 'string', maxLength: 100, nullable: true },
+          kodePos: { type: 'string', maxLength: 20, nullable: true },
+          noTelp: { type: 'string', maxLength: 30, nullable: true },
+          email: { type: 'string', format: 'email', nullable: true },
+          logo: { type: 'string', nullable: true },
+          deskripsi: { type: 'string', maxLength: 2000, nullable: true },
+          latitude: { type: 'number', minimum: -90, maximum: 90, nullable: true },
+          longitude: { type: 'number', minimum: -180, maximum: 180, nullable: true },
+          status: { type: 'string', enum: ['AKTIF', 'NONAKTIF'] },
+        },
+      },
       Donasi: {
         type: 'object',
         properties: {
           id: { type: 'integer' },
           religionId: { type: 'integer' },
+          tempatIbadahId: { type: 'integer', description: 'Tenant scope. Diabaikan untuk non-SUPERADMIN.' },
           userId: { type: 'integer', nullable: true },
           jemaahId: { type: 'integer', nullable: true },
           rekeningId: { type: 'integer', nullable: true },
@@ -145,6 +218,155 @@ const spec = {
   },
   security: [{ bearerAuth: [] }],
   paths: {
+    '/api/tempat-ibadah': {
+      get: {
+        tags: ['TempatIbadah'],
+        summary: 'List tempat ibadah',
+        description:
+          'SUPERADMIN: semua tempat ibadah (opsional filter via `religionId`). Non-SUPERADMIN: hanya tempat ibadah di agamanya.',
+        parameters: [
+          { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', default: 10, maximum: 100 } },
+          { name: 'search', in: 'query', schema: { type: 'string' }, description: 'Cari nama / slug / kota' },
+          { name: 'religionId', in: 'query', schema: { type: 'integer' }, description: 'Filter berdasarkan agama (SUPERADMIN)' },
+          { name: 'arsip', in: 'query', schema: { type: 'boolean', default: false }, description: 'Tampilkan yang sudah diarsipkan' },
+        ],
+        responses: {
+          200: {
+            description: 'Berhasil',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    data: { type: 'array', items: { $ref: '#/components/schemas/TempatIbadah' } },
+                    total: { type: 'integer' },
+                    page: { type: 'integer' },
+                    limit: { type: 'integer' },
+                  },
+                },
+              },
+            },
+          },
+          401: { description: 'Unauthorized' },
+        },
+      },
+      post: {
+        tags: ['TempatIbadah'],
+        summary: 'Buat tempat ibadah baru (SUPERADMIN only)',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': { schema: { $ref: '#/components/schemas/TempatIbadahInput' } },
+          },
+        },
+        responses: {
+          201: {
+            description: 'Berhasil dibuat',
+            content: {
+              'application/json': {
+                schema: { type: 'object', properties: { data: { $ref: '#/components/schemas/TempatIbadah' } } },
+              },
+            },
+          },
+          400: { description: 'Validasi gagal' },
+          403: { description: 'Forbidden (hanya SUPERADMIN)' },
+          404: { description: 'Agama tidak ditemukan' },
+          409: { description: 'Slug sudah dipakai' },
+        },
+      },
+    },
+    '/api/tempat-ibadah/{id}': {
+      get: {
+        tags: ['TempatIbadah'],
+        summary: 'Detail tempat ibadah',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
+        responses: {
+          200: {
+            description: 'Berhasil',
+            content: {
+              'application/json': {
+                schema: { type: 'object', properties: { data: { $ref: '#/components/schemas/TempatIbadah' } } },
+              },
+            },
+          },
+          403: { description: 'Bukan tempat ibadah di agama Anda' },
+          404: { description: 'Tidak ditemukan' },
+        },
+      },
+      put: {
+        tags: ['TempatIbadah'],
+        summary: 'Update tempat ibadah (SUPERADMIN only)',
+        description:
+          'Semua field opsional (partial update). Mengubah `religionId` ditolak jika sudah ada child (user/jemaah/kegiatan/donasi).',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': { schema: { $ref: '#/components/schemas/TempatIbadahInput' } },
+          },
+        },
+        responses: {
+          200: { description: 'Berhasil diupdate' },
+          400: { description: 'Validasi gagal / tidak boleh ganti agama karena ada child' },
+          403: { description: 'Forbidden (hanya SUPERADMIN)' },
+          404: { description: 'Tidak ditemukan' },
+          409: { description: 'Slug sudah dipakai' },
+        },
+      },
+      delete: {
+        tags: ['TempatIbadah'],
+        summary: 'Arsipkan tempat ibadah (soft delete, SUPERADMIN only)',
+        description:
+          'Hanya bisa diarsipkan jika tidak ada user/jemaah/kegiatan/donasi aktif. Set `deletedAt = now()` dan `status = NONAKTIF`.',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
+        responses: {
+          200: { description: 'Berhasil diarsipkan' },
+          400: { description: 'Masih ada child aktif' },
+          403: { description: 'Forbidden (hanya SUPERADMIN)' },
+          404: { description: 'Tidak ditemukan' },
+        },
+      },
+    },
+    '/api/tempat-ibadah/public': {
+      get: {
+        tags: ['TempatIbadah', 'Public'],
+        summary: 'List tempat ibadah aktif (public)',
+        description:
+          'Endpoint publik tanpa auth. Dipakai halaman register sebagai dropdown setelah user memilih agama.',
+        security: [],
+        parameters: [
+          { name: 'religionId', in: 'query', required: true, schema: { type: 'integer' }, description: 'Wajib; filter agama' },
+        ],
+        responses: {
+          200: {
+            description: 'Daftar tempat ibadah aktif',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    data: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'integer' },
+                          nama: { type: 'string' },
+                          slug: { type: 'string' },
+                          kota: { type: 'string', nullable: true },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          400: { description: '`religionId` wajib' },
+        },
+      },
+    },
     '/api/donasi': {
       get: {
         tags: ['Donasi'],
@@ -193,7 +415,8 @@ const spec = {
                 type: 'object',
                 required: ['namaDonatur', 'nominal', 'tanggal', 'metodePembayaran'],
                 properties: {
-                  religionId: { type: 'integer', description: 'Wajib jika SUPERADMIN' },
+                  religionId: { type: 'integer', description: 'Wajib jika SUPERADMIN; diabaikan untuk role lain (derive dari session)' },
+                  tempatIbadahId: { type: 'integer', description: 'Wajib jika SUPERADMIN; harus konsisten dengan `religionId`. Diabaikan untuk role lain.' },
                   jemaahId: { type: 'integer', nullable: true },
                   rekeningId: { type: 'integer', nullable: true },
                   namaDonatur: { type: 'string', minLength: 2, maxLength: 100 },

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { pengumumanUpdateSchema } from '@/lib/validations/pengumuman'
+import { validateScopeUpdate, isScopeError } from '@/lib/scope'
 
 function canManagePengumuman(session: { user: { role: string; subRole?: string | null } } | null) {
   if (!session) return false
@@ -21,13 +22,13 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
   const pengumuman = await prisma.pengumuman.findUnique({
     where: { id, deletedAt: null },
-    include: { religion: { select: { id: true, nama: true } } },
+    include: { religion: { select: { id: true, nama: true } }, tempatIbadah: { select: { id: true, nama: true, slug: true } } },
   })
   if (!pengumuman) return NextResponse.json({ error: 'Pengumuman tidak ditemukan' }, { status: 404 })
 
   if (
     session.user.role !== 'SUPERADMIN' &&
-    pengumuman.religionId !== session.user.religionId
+    pengumuman.tempatIbadahId !== session.user.tempatIbadahId
   ) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
@@ -54,7 +55,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   const pengumuman = await prisma.pengumuman.findUnique({ where: { id, deletedAt: null } })
   if (!pengumuman) return NextResponse.json({ error: 'Pengumuman tidak ditemukan' }, { status: 404 })
 
-  if (session.user.role === 'PENGURUS' && pengumuman.religionId !== session.user.religionId) {
+  if (session.user.role === 'PENGURUS' && pengumuman.tempatIbadahId !== session.user.tempatIbadahId) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -64,18 +65,16 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
   }
 
-  if (
-    session.user.role === 'PENGURUS' &&
-    parsed.data.religionId !== undefined &&
-    parsed.data.religionId !== pengumuman.religionId
-  ) {
-    return NextResponse.json(
-      { error: 'Tidak dapat memindahkan pengumuman ke agama lain' },
-      { status: 403 }
-    )
+  const scopeRes = await validateScopeUpdate(
+    session,
+    { religionId: pengumuman.religionId, tempatIbadahId: pengumuman.tempatIbadahId },
+    { religionId: parsed.data.religionId, tempatIbadahId: parsed.data.tempatIbadahId }
+  )
+  if (isScopeError(scopeRes)) {
+    return NextResponse.json({ error: scopeRes.error }, { status: scopeRes.status })
   }
 
-  const updateData: Record<string, unknown> = { ...parsed.data }
+  const updateData: Record<string, unknown> = { ...parsed.data, ...scopeRes }
   if (typeof updateData.tanggalPublish === 'string') {
     updateData.tanggalPublish = new Date(updateData.tanggalPublish as string)
   }
@@ -118,7 +117,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   const pengumuman = await prisma.pengumuman.findUnique({ where: { id, deletedAt: null } })
   if (!pengumuman) return NextResponse.json({ error: 'Pengumuman tidak ditemukan' }, { status: 404 })
 
-  if (session.user.role === 'PENGURUS' && pengumuman.religionId !== session.user.religionId) {
+  if (session.user.role === 'PENGURUS' && pengumuman.tempatIbadahId !== session.user.tempatIbadahId) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -163,7 +162,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     return NextResponse.json({ error: 'Pengumuman tidak dalam kondisi dihapus' }, { status: 400 })
   }
 
-  if (session.user.role === 'PENGURUS' && pengumuman.religionId !== session.user.religionId) {
+  if (session.user.role === 'PENGURUS' && pengumuman.tempatIbadahId !== session.user.tempatIbadahId) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 

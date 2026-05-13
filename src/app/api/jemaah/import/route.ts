@@ -43,12 +43,19 @@ export async function POST(req: NextRequest) {
 
   const file = formData.get('file')
   const fallbackReligionIdRaw = formData.get('religionId')
+  const fallbackTempatIbadahIdRaw = formData.get('tempatIbadahId')
   const fallbackReligionId =
     fallbackReligionIdRaw && !isNaN(Number(fallbackReligionIdRaw))
       ? Number(fallbackReligionIdRaw)
       : isSuperAdmin
       ? null
       : (session.user.religionId ?? null)
+  const fallbackTempatIbadahId =
+    fallbackTempatIbadahIdRaw && !isNaN(Number(fallbackTempatIbadahIdRaw))
+      ? Number(fallbackTempatIbadahIdRaw)
+      : isSuperAdmin
+      ? null
+      : (session.user.tempatIbadahId ?? null)
 
   if (!(file instanceof File)) {
     return NextResponse.json({ error: 'File tidak ditemukan' }, { status: 400 })
@@ -85,6 +92,18 @@ export async function POST(req: NextRequest) {
   const religionByNama = new Map<string, number>()
   allReligions.forEach((r) => religionByNama.set(r.nama.toLowerCase(), r.id))
 
+  // Pre-fetch tempat ibadah untuk lookup slug/nama → id
+  const allTempatIbadah = await prisma.tempatIbadah.findMany({
+    where: { deletedAt: null, status: 'AKTIF' },
+    select: { id: true, nama: true, slug: true, religionId: true },
+  })
+  const tempatIbadahBySlug = new Map<string, { id: number; religionId: number }>()
+  const tempatIbadahByNama = new Map<string, { id: number; religionId: number }>()
+  allTempatIbadah.forEach((t) => {
+    tempatIbadahBySlug.set(t.slug.toLowerCase(), { id: t.id, religionId: t.religionId })
+    tempatIbadahByNama.set(t.nama.toLowerCase(), { id: t.id, religionId: t.religionId })
+  })
+
   const result: ImportResult = {
     total: rows.length,
     imported: 0,
@@ -115,6 +134,7 @@ export async function POST(req: NextRequest) {
 
     // Religion: SUPERADMIN bisa per-row via kolom Agama, lainnya pakai fallback (religionId session)
     let resolvedReligionId: number | null = fallbackReligionId
+    let resolvedTempatIbadahId: number | null = fallbackTempatIbadahId
     if (isSuperAdmin) {
       const agamaRaw = row.agama ?? row.religion ?? (row as Record<string, unknown>)['Agama']
       const agamaStr = typeof agamaRaw === 'string' ? agamaRaw.trim().toLowerCase() : ''
@@ -122,11 +142,38 @@ export async function POST(req: NextRequest) {
         const found = religionByNama.get(agamaStr)
         if (found) resolvedReligionId = found
       }
+
+      // Kolom tempat ibadah opsional (nama/slug). Jika kosong, fallback ke fallbackTempatIbadahId.
+      const tiRaw =
+        row.tempatIbadah ??
+        row['tempat_ibadah'] ??
+        row['tempat ibadah'] ??
+        (row as Record<string, unknown>)['Tempat Ibadah']
+      const tiStr = typeof tiRaw === 'string' ? tiRaw.trim().toLowerCase() : ''
+      if (tiStr) {
+        const found = tempatIbadahBySlug.get(tiStr) ?? tempatIbadahByNama.get(tiStr)
+        if (found) {
+          resolvedTempatIbadahId = found.id
+          if (!resolvedReligionId) resolvedReligionId = found.religionId
+        }
+      }
     }
 
     if (!resolvedReligionId) {
       result.skipped++
       result.errors.push({ row: rowNum, nama, reason: 'Agama tidak ditemukan' })
+      continue
+    }
+    if (!resolvedTempatIbadahId) {
+      result.skipped++
+      result.errors.push({ row: rowNum, nama, reason: 'Tempat ibadah tidak ditemukan' })
+      continue
+    }
+    // Konsistensi: tempat ibadah harus cocok dengan agama row
+    const tiInfo = allTempatIbadah.find((t) => t.id === resolvedTempatIbadahId)
+    if (!tiInfo || tiInfo.religionId !== resolvedReligionId) {
+      result.skipped++
+      result.errors.push({ row: rowNum, nama, reason: 'Tempat ibadah tidak sesuai agama' })
       continue
     }
 
@@ -152,6 +199,7 @@ export async function POST(req: NextRequest) {
           noHp,
           alamat,
           religionId: resolvedReligionId,
+          tempatIbadahId: resolvedTempatIbadahId,
           status: true,
         },
       })

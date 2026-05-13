@@ -11,8 +11,7 @@ import { Loader2, ArrowLeft, Info } from 'lucide-react'
 import { pengurusCreateSchema, type PengurusCreateInput } from '@/lib/validations/pengurus'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { PasswordModal } from '@/components/shared/PasswordModal'
-
-interface AgamaOption { id: number; nama: string }
+import { ScopeSelector } from '@/components/shared/ScopeSelector'
 
 const subRoleOptions = [
   { value: 'KETUA',      label: 'Ketua' },
@@ -24,7 +23,6 @@ export default function PengurusBaruPage() {
   const router = useRouter()
   const { data: session } = useSession()
   const isSuperAdmin = session?.user.role === 'SUPERADMIN'
-  const [agamaList, setAgamaList] = useState<AgamaOption[]>([])
   const [generatedPassword, setGeneratedPassword] = useState<string | null>(null)
   const [createdName, setCreatedName] = useState('')
 
@@ -32,14 +30,20 @@ export default function PengurusBaruPage() {
     register,
     handleSubmit,
     setValue,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<PengurusCreateInput>({ resolver: zodResolver(pengurusCreateSchema) })
+
+  const religionIdW = watch('religionId')
+  const tempatIbadahIdW = watch('tempatIbadahId')
 
   useEffect(() => {
     if (!isSuperAdmin && session?.user.religionId) {
       setValue('religionId', session.user.religionId)
     }
-    axios.get('/api/agama/public').then((r) => setAgamaList(r.data.data))
+    if (!isSuperAdmin && session?.user.tempatIbadahId) {
+      setValue('tempatIbadahId', session.user.tempatIbadahId)
+    }
   }, [isSuperAdmin, session, setValue])
 
   async function onSubmit(data: PengurusCreateInput) {
@@ -132,30 +136,39 @@ export default function PengurusBaruPage() {
             {errors.subRole && <p className="mt-1 text-xs text-red-600">{errors.subRole.message}</p>}
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Agama <span className="text-red-500">*</span>
-            </label>
-            {isSuperAdmin ? (
-              <select
-                {...register('religionId', { valueAsNumber: true })}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                <option value="">-- Pilih Agama --</option>
-                {agamaList.map((a) => (
-                  <option key={a.id} value={a.id}>{a.nama}</option>
-                ))}
-              </select>
-            ) : (
-              <input
-                type="text"
-                value={session?.user.religionName ?? ''}
-                disabled
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm bg-gray-50 text-gray-500"
-              />
-            )}
-            {errors.religionId && <p className="mt-1 text-xs text-red-600">{errors.religionId.message}</p>}
-          </div>
+          {isSuperAdmin ? (
+            <ScopeSelector
+              religionId={religionIdW}
+              tempatIbadahId={tempatIbadahIdW}
+              onChange={({ religionId, tempatIbadahId }) => {
+                setValue('religionId', religionId as number)
+                setValue('tempatIbadahId', tempatIbadahId)
+              }}
+              errorReligion={errors.religionId?.message}
+              errorTempatIbadah={errors.tempatIbadahId?.message}
+            />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Agama</label>
+                <input
+                  type="text"
+                  value={session?.user.religionName ?? ''}
+                  disabled
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm bg-gray-50 text-gray-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tempat Ibadah</label>
+                <input
+                  type="text"
+                  value={session?.user.tempatIbadahNama ?? ''}
+                  disabled
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm bg-gray-50 text-gray-500"
+                />
+              </div>
+            </div>
+          )}
 
           <div className="flex gap-3 pt-2">
             <button

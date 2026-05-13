@@ -17,9 +17,24 @@ export async function GET() {
       role: true,
       subRole: true,
       religionId: true,
+      tempatIbadahId: true,
       fotoProfil: true,
       createdAt: true,
       religion: { select: { id: true, nama: true } },
+      tempatIbadah: {
+        select: {
+          id: true,
+          nama: true,
+          slug: true,
+          alamat: true,
+          kota: true,
+          provinsi: true,
+          noTelp: true,
+          email: true,
+          logo: true,
+          status: true,
+        },
+      },
     },
   })
   if (!user) return NextResponse.json({ error: 'User tidak ditemukan' }, { status: 404 })

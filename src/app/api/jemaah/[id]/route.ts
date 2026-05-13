@@ -33,14 +33,16 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       alamat: true,
       status: true,
       religionId: true,
+      tempatIbadahId: true,
       userId: true,
       createdAt: true,
       religion: { select: { id: true, nama: true } },
+      tempatIbadah: { select: { id: true, nama: true, slug: true } },
     },
   })
   if (!jemaah) return NextResponse.json({ error: 'Jemaah tidak ditemukan' }, { status: 404 })
 
-  if (session.user.role === 'PENGURUS' && jemaah.religionId !== session.user.religionId) {
+  if (session.user.role === 'PENGURUS' && jemaah.tempatIbadahId !== session.user.tempatIbadahId) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -63,7 +65,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   const jemaah = await prisma.jemaah.findUnique({ where: { id, deletedAt: null } })
   if (!jemaah) return NextResponse.json({ error: 'Jemaah tidak ditemukan' }, { status: 404 })
 
-  if (session.user.role === 'PENGURUS' && jemaah.religionId !== session.user.religionId) {
+  if (session.user.role === 'PENGURUS' && jemaah.tempatIbadahId !== session.user.tempatIbadahId) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -73,16 +75,45 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
   }
 
-  // PENGURUS tidak boleh pindahkan jemaah ke agama lain
-  if (
-    session.user.role === 'PENGURUS' &&
-    parsed.data.religionId !== undefined &&
-    parsed.data.religionId !== jemaah.religionId
+  // PENGURUS tidak boleh pindahkan jemaah ke agama / tempat ibadah lain
+  const isSuperAdmin = session.user.role === 'SUPERADMIN'
+  if (!isSuperAdmin) {
+    if (
+      parsed.data.religionId !== undefined &&
+      parsed.data.religionId !== jemaah.religionId
+    ) {
+      return NextResponse.json(
+        { error: 'Tidak dapat memindahkan jemaah ke agama lain' },
+        { status: 403 }
+      )
+    }
+    if (
+      parsed.data.tempatIbadahId !== undefined &&
+      parsed.data.tempatIbadahId !== jemaah.tempatIbadahId
+    ) {
+      return NextResponse.json(
+        { error: 'Tidak dapat memindahkan jemaah ke tempat ibadah lain' },
+        { status: 403 }
+      )
+    }
+  } else if (
+    parsed.data.tempatIbadahId !== undefined &&
+    parsed.data.tempatIbadahId !== jemaah.tempatIbadahId
   ) {
-    return NextResponse.json(
-      { error: 'Tidak dapat memindahkan jemaah ke agama lain' },
-      { status: 403 }
-    )
+    // SUPERADMIN ingin pindahkan ke tempat ibadah lain: validasi konsistensi
+    const ti = await prisma.tempatIbadah.findUnique({
+      where: { id: parsed.data.tempatIbadahId },
+    })
+    if (!ti || ti.deletedAt) {
+      return NextResponse.json({ error: 'Tempat ibadah tidak ditemukan' }, { status: 404 })
+    }
+    const targetReligionId = parsed.data.religionId ?? jemaah.religionId
+    if (ti.religionId !== targetReligionId) {
+      return NextResponse.json(
+        { error: 'Tempat ibadah tidak sesuai dengan agama' },
+        { status: 400 }
+      )
+    }
   }
 
   const updateData: Record<string, unknown> = { ...parsed.data }
@@ -124,7 +155,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   const jemaah = await prisma.jemaah.findUnique({ where: { id, deletedAt: null } })
   if (!jemaah) return NextResponse.json({ error: 'Jemaah tidak ditemukan' }, { status: 404 })
 
-  if (session.user.role === 'PENGURUS' && jemaah.religionId !== session.user.religionId) {
+  if (session.user.role === 'PENGURUS' && jemaah.tempatIbadahId !== session.user.tempatIbadahId) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -170,7 +201,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     return NextResponse.json({ error: 'Jemaah tidak dalam kondisi dihapus' }, { status: 400 })
   }
 
-  if (session.user.role === 'PENGURUS' && jemaah.religionId !== session.user.religionId) {
+  if (session.user.role === 'PENGURUS' && jemaah.tempatIbadahId !== session.user.tempatIbadahId) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 

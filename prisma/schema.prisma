@@ -59,6 +59,11 @@ enum StatusRekening {
   NONAKTIF
 }
 
+enum StatusTempatIbadah {
+  AKTIF
+  NONAKTIF
+}
+
 enum StatusPendaftaran {
   TERDAFTAR
   HADIR
@@ -69,12 +74,12 @@ enum StatusPendaftaran {
 // ─── TABEL UTAMA ─────────────────────────────────────────
 
 model Religion {
-  id          Int       @id @default(autoincrement())
-  nama        String    @unique
-  deskripsi   String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  deletedAt   DateTime?
+  id        Int       @id @default(autoincrement())
+  nama      String    @unique
+  deskripsi String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   users        User[]
   kegiatan     Kegiatan[]
@@ -83,32 +88,68 @@ model Religion {
   pengeluaran  Pengeluaran[]
   rekening     Rekening[]
   jemaah       Jemaah[]
+  tempatIbadah TempatIbadah[]
+}
+
+model TempatIbadah {
+  id         Int                @id @default(autoincrement())
+  religionId Int
+  nama       String
+  slug       String             @unique
+  alamat     String?
+  kota       String?
+  provinsi   String?
+  kodePos    String?
+  noTelp     String?
+  email      String?
+  logo       String?
+  deskripsi  String?            @db.Text
+  latitude   Decimal?           @db.Decimal(10, 7)
+  longitude  Decimal?           @db.Decimal(10, 7)
+  status     StatusTempatIbadah @default(AKTIF)
+  createdBy  Int?
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+  deletedAt  DateTime?
+
+  religion    Religion      @relation(fields: [religionId], references: [id])
+  users       User[]
+  jemaah      Jemaah[]
+  kegiatan    Kegiatan[]
+  pengumuman  Pengumuman[]
+  donasi      Donasi[]
+  pengeluaran Pengeluaran[]
+  rekening    Rekening[]
+
+  @@index([religionId])
 }
 
 model User {
-  id            Int       @id @default(autoincrement())
-  nama          String
-  email         String    @unique
-  password      String
-  role          Role
-  subRole       SubRole?
-  religionId    Int?
-  fotoProfil    String?
-  status        Boolean   @default(true)
-  emailVerified DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  deletedAt     DateTime?
+  id             Int       @id @default(autoincrement())
+  nama           String
+  email          String    @unique
+  password       String
+  role           Role
+  subRole        SubRole?
+  religionId     Int?
+  tempatIbadahId Int?
+  fotoProfil     String?
+  status         Boolean   @default(true)
+  emailVerified  DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
 
-  religion             Religion?             @relation(fields: [religionId], references: [id])
-  jemaahProfile        Jemaah?
-  donasi               Donasi[]              @relation("DonasiByUser")
-  konfirmasiDonasi     Donasi[]              @relation("KonfirmasiBy")
-  pengeluaran          Pengeluaran[]
-  notifikasi           Notifikasi[]
-  activityLogs         ActivityLog[]
-  sessions             Session[]
-  kegiatanPendaftaran  KegiatanPendaftaran[]
+  religion            Religion?             @relation(fields: [religionId], references: [id])
+  tempatIbadah        TempatIbadah?         @relation(fields: [tempatIbadahId], references: [id])
+  jemaahProfile       Jemaah?
+  donasi              Donasi[]              @relation("DonasiByUser")
+  konfirmasiDonasi    Donasi[]              @relation("KonfirmasiBy")
+  pengeluaran         Pengeluaran[]
+  notifikasi          Notifikasi[]
+  activityLogs        ActivityLog[]
+  sessions            Session[]
+  kegiatanPendaftaran KegiatanPendaftaran[]
 }
 
 model Session {
@@ -129,42 +170,50 @@ model VerificationToken {
 }
 
 model Jemaah {
-  id         Int       @id @default(autoincrement())
-  userId     Int?      @unique
-  religionId Int
-  nama       String
-  email      String?
-  noHp       String?
-  alamat     String?
-  status     Boolean   @default(true)
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  deletedAt  DateTime?
+  id             Int       @id @default(autoincrement())
+  userId         Int?      @unique
+  religionId     Int
+  tempatIbadahId Int
+  nama           String
+  email          String?
+  noHp           String?
+  alamat         String?
+  status         Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
 
-  user     User?    @relation(fields: [userId], references: [id])
-  religion Religion @relation(fields: [religionId], references: [id])
-  donasi   Donasi[]
+  user         User?        @relation(fields: [userId], references: [id])
+  religion     Religion     @relation(fields: [religionId], references: [id])
+  tempatIbadah TempatIbadah @relation(fields: [tempatIbadahId], references: [id])
+  donasi       Donasi[]
+
+  @@index([tempatIbadahId])
 }
 
 model Kegiatan {
-  id            Int            @id @default(autoincrement())
-  religionId    Int
-  namaKegiatan  String
-  tanggal       DateTime
-  waktuMulai    String
-  waktuSelesai  String?
-  lokasi        String
-  deskripsi     String?
-  kapasitas     Int?
-  status        StatusKegiatan @default(UPCOMING)
-  createdBy     Int
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  deletedAt     DateTime?
-  deletedReason String?
+  id             Int            @id @default(autoincrement())
+  religionId     Int
+  tempatIbadahId Int
+  namaKegiatan   String
+  tanggal        DateTime
+  waktuMulai     String
+  waktuSelesai   String?
+  lokasi         String
+  deskripsi      String?
+  kapasitas      Int?
+  status         StatusKegiatan @default(UPCOMING)
+  createdBy      Int
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  deletedAt      DateTime?
+  deletedReason  String?
 
-  religion    Religion              @relation(fields: [religionId], references: [id])
-  pendaftaran KegiatanPendaftaran[]
+  religion     Religion              @relation(fields: [religionId], references: [id])
+  tempatIbadah TempatIbadah          @relation(fields: [tempatIbadahId], references: [id])
+  pendaftaran  KegiatanPendaftaran[]
+
+  @@index([tempatIbadahId])
 }
 
 model KegiatanPendaftaran {
@@ -183,21 +232,25 @@ model KegiatanPendaftaran {
 }
 
 model Pengumuman {
-  id              Int              @id @default(autoincrement())
-  religionId      Int
-  judul           String
-  isi             String           @db.Text
-  tanggalPublish  DateTime         @default(now())
-  expireDate      DateTime?
-  status          StatusPengumuman @default(DRAFT)
-  createdBy       Int
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  deletedAt       DateTime?
-  deletedReason   String?
+  id             Int              @id @default(autoincrement())
+  religionId     Int
+  tempatIbadahId Int
+  judul          String
+  isi            String           @db.Text
+  tanggalPublish DateTime         @default(now())
+  expireDate     DateTime?
+  status         StatusPengumuman @default(DRAFT)
+  createdBy      Int
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  deletedAt      DateTime?
+  deletedReason  String?
 
-  religion  Religion              @relation(fields: [religionId], references: [id])
-  lampiran  PengumumanLampiran[]
+  religion     Religion             @relation(fields: [religionId], references: [id])
+  tempatIbadah TempatIbadah         @relation(fields: [tempatIbadahId], references: [id])
+  lampiran     PengumumanLampiran[]
+
+  @@index([tempatIbadahId])
 }
 
 model PengumumanLampiran {
@@ -212,18 +265,19 @@ model PengumumanLampiran {
 }
 
 model Donasi {
-  id                 Int              @id @default(autoincrement())
-  religionId         Int
-  userId             Int?
-  jemaahId           Int?
-  rekeningId         Int?
-  namaDonatur        String
-  nominal            Decimal          @db.Decimal(15, 2)
-  tanggal            DateTime
-  metodePembayaran   MetodePembayaran
-  status             StatusDonasi     @default(PENDING)
-  catatan            String?
-  buktiPembayaran    String?
+  id                    Int              @id @default(autoincrement())
+  religionId            Int
+  tempatIbadahId        Int
+  userId                Int?
+  jemaahId              Int?
+  rekeningId            Int?
+  namaDonatur           String
+  nominal               Decimal          @db.Decimal(15, 2)
+  tanggal               DateTime
+  metodePembayaran      MetodePembayaran
+  status                StatusDonasi     @default(PENDING)
+  catatan               String?
+  buktiPembayaran       String?
   dikonfirmasiOleh      Int?
   dikonfirmasiAt        DateTime?
   midtransOrderId       String?          @unique
@@ -237,34 +291,42 @@ model Donasi {
   deletedAt             DateTime?
   deletedReason         String?
 
-  religion     Religion  @relation(fields: [religionId], references: [id])
-  user         User?     @relation("DonasiByUser", fields: [userId], references: [id])
-  jemaah       Jemaah?   @relation(fields: [jemaahId], references: [id])
-  rekening     Rekening? @relation(fields: [rekeningId], references: [id])
-  konfirmasiBy User?     @relation("KonfirmasiBy", fields: [dikonfirmasiOleh], references: [id])
+  religion     Religion     @relation(fields: [religionId], references: [id])
+  tempatIbadah TempatIbadah @relation(fields: [tempatIbadahId], references: [id])
+  user         User?        @relation("DonasiByUser", fields: [userId], references: [id])
+  jemaah       Jemaah?      @relation(fields: [jemaahId], references: [id])
+  rekening     Rekening?    @relation(fields: [rekeningId], references: [id])
+  konfirmasiBy User?        @relation("KonfirmasiBy", fields: [dikonfirmasiOleh], references: [id])
+
+  @@index([tempatIbadahId])
 }
 
 model Pengeluaran {
-  id            Int                 @id @default(autoincrement())
-  religionId    Int
-  keterangan    String
-  nominal       Decimal             @db.Decimal(15, 2)
-  tanggal       DateTime
-  kategori      KategoriPengeluaran
-  bukti         String?
-  createdBy     Int
-  createdAt     DateTime            @default(now())
-  updatedAt     DateTime            @updatedAt
-  deletedAt     DateTime?
-  deletedReason String?
+  id             Int                 @id @default(autoincrement())
+  religionId     Int
+  tempatIbadahId Int
+  keterangan     String
+  nominal        Decimal             @db.Decimal(15, 2)
+  tanggal        DateTime
+  kategori       KategoriPengeluaran
+  bukti          String?
+  createdBy      Int
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  deletedAt      DateTime?
+  deletedReason  String?
 
-  religion Religion @relation(fields: [religionId], references: [id])
-  user     User     @relation(fields: [createdBy], references: [id])
+  religion     Religion     @relation(fields: [religionId], references: [id])
+  tempatIbadah TempatIbadah @relation(fields: [tempatIbadahId], references: [id])
+  user         User         @relation(fields: [createdBy], references: [id])
+
+  @@index([tempatIbadahId])
 }
 
 model Rekening {
-  id             Int           @id @default(autoincrement())
+  id             Int            @id @default(autoincrement())
   religionId     Int
+  tempatIbadahId Int
   namaBank       String
   nomorRekening  String
   namaPemilik    String
@@ -273,18 +335,21 @@ model Rekening {
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
-  religion Religion @relation(fields: [religionId], references: [id])
-  donasi   Donasi[]
+  religion     Religion     @relation(fields: [religionId], references: [id])
+  tempatIbadah TempatIbadah @relation(fields: [tempatIbadahId], references: [id])
+  donasi       Donasi[]
+
+  @@index([tempatIbadahId])
 }
 
 model Notifikasi {
-  id         Int      @id @default(autoincrement())
-  userId     Int
-  judul      String
-  isi        String
-  urlTujuan  String?
-  dibaca     Boolean  @default(false)
-  createdAt  DateTime @default(now())
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  judul     String
+  isi       String
+  urlTujuan String?
+  dibaca    Boolean  @default(false)
+  createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

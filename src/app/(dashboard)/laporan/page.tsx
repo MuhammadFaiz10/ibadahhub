@@ -2,14 +2,17 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
-import { HandCoins, TrendingDown, Wallet, Calendar, FileSpreadsheet, FileText } from 'lucide-react'
+import { HandCoins, TrendingDown, Wallet, Calendar, Building2, Globe } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { formatRupiah } from '@/lib/utils'
+import { LaporanFilterBar } from './_filter-bar'
 
 export const metadata: Metadata = { title: 'Laporan Keuangan' }
 
 interface SearchParams {
   tahun?: string
+  religionId?: string
+  tempatIbadahId?: string
 }
 
 const kategoriList = ['OPERASIONAL', 'KEGIATAN', 'SOSIAL', 'LAINNYA'] as const
@@ -43,10 +46,43 @@ export default async function LaporanPage({ searchParams }: { searchParams: Sear
   const startOfYear = new Date(`${tahun}-01-01T00:00:00.000Z`)
   const endOfYear = new Date(`${tahun + 1}-01-01T00:00:00.000Z`)
 
-  const religionId = role !== 'SUPERADMIN' ? (session.user.religionId ?? -1) : undefined
+  const isSuperAdmin = role === 'SUPERADMIN'
+
+  // Scope resolution:
+  //   - SUPERADMIN: optional filter dari URL (religionId & tempatIbadahId)
+  //   - PENGURUS/JEMAAH: paksa scope session
+  const religionId = isSuperAdmin
+    ? searchParams.religionId
+      ? Number(searchParams.religionId)
+      : undefined
+    : (session.user.religionId ?? -1)
+  const tempatIbadahId = isSuperAdmin
+    ? searchParams.tempatIbadahId
+      ? Number(searchParams.tempatIbadahId)
+      : undefined
+    : (session.user.tempatIbadahId ?? -1)
+
+  // Resolve label untuk badge scope (SUPERADMIN saja)
+  let scopeBadge: { religionName?: string; tempatIbadahName?: string } | null = null
+  if (isSuperAdmin && (religionId || tempatIbadahId)) {
+    const [r, t] = await Promise.all([
+      religionId
+        ? prisma.religion.findUnique({ where: { id: religionId }, select: { nama: true } })
+        : null,
+      tempatIbadahId
+        ? prisma.tempatIbadah.findUnique({
+            where: { id: tempatIbadahId },
+            select: { nama: true },
+          })
+        : null,
+    ])
+    scopeBadge = { religionName: r?.nama, tempatIbadahName: t?.nama }
+  }
+
   const baseWhere = {
     deletedAt: null,
     ...(religionId !== undefined ? { religionId } : {}),
+    ...(tempatIbadahId !== undefined ? { tempatIbadahId } : {}),
     tanggal: { gte: startOfYear, lt: endOfYear },
   }
 
@@ -89,6 +125,7 @@ export default async function LaporanPage({ searchParams }: { searchParams: Sear
       where: {
         deletedAt: null,
         ...(religionId !== undefined ? { religionId } : {}),
+        ...(tempatIbadahId !== undefined ? { tempatIbadahId } : {}),
         tanggal: { gte: startOfYear, lt: endOfYear },
       },
     }),
@@ -120,43 +157,33 @@ export default async function LaporanPage({ searchParams }: { searchParams: Sear
         title="Laporan Keuangan"
         subtitle={`Ringkasan keuangan tahun ${tahun}`}
         action={
-          <div className="flex flex-wrap items-center gap-2">
-            <form className="flex items-center gap-2">
-              <label className="text-sm text-gray-600 hidden sm:inline">Tahun:</label>
-              <select
-                name="tahun"
-                defaultValue={tahun}
-                className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                {Array.from({ length: 5 }).map((_, i) => {
-                  const y = new Date().getFullYear() - i
-                  return <option key={y} value={y}>{y}</option>
-                })}
-              </select>
-              <button
-                type="submit"
-                className="px-3 py-2 text-sm bg-primary text-white rounded-lg hover:bg-primary-dark"
-              >
-                Tampilkan
-              </button>
-            </form>
-            <a
-              href={`/api/laporan/export?format=xlsx&tahun=${tahun}`}
-              className="flex items-center gap-1.5 px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700 transition-colors"
-              title="Download Excel"
-            >
-              <FileSpreadsheet size={15} /> Excel
-            </a>
-            <a
-              href={`/api/laporan/export?format=pdf&tahun=${tahun}`}
-              className="flex items-center gap-1.5 px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-red-50 hover:border-red-300 hover:text-red-700 transition-colors"
-              title="Download PDF"
-            >
-              <FileText size={15} /> PDF
-            </a>
-          </div>
+          <LaporanFilterBar
+            tahun={tahun}
+            isSuperAdmin={isSuperAdmin}
+            religionId={religionId}
+            tempatIbadahId={tempatIbadahId}
+          />
         }
       />
+
+      {/* Active scope badges (SUPERADMIN) */}
+      {scopeBadge && (scopeBadge.religionName || scopeBadge.tempatIbadahName) && (
+        <div className="flex flex-wrap items-center gap-2 mb-4 text-xs">
+          <span className="text-gray-500">Menampilkan laporan untuk:</span>
+          {scopeBadge.religionName && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 ring-1 ring-amber-100">
+              <Globe size={11} />
+              {scopeBadge.religionName}
+            </span>
+          )}
+          {scopeBadge.tempatIbadahName && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 ring-1 ring-teal-100">
+              <Building2 size={11} />
+              {scopeBadge.tempatIbadahName}
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Summary cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">

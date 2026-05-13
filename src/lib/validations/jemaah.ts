@@ -5,6 +5,11 @@ export const jemaahCreateSchema = z.object({
     .number({ required_error: 'Agama wajib dipilih' })
     .int()
     .positive('Agama tidak valid'),
+  tempatIbadahId: z
+    .number({ required_error: 'Tempat ibadah wajib dipilih' })
+    .int()
+    .positive('Tempat ibadah tidak valid')
+    .optional(),
   nama: z.string().min(2, 'Nama minimal 2 karakter').max(100),
   email: z.string().email('Format email tidak valid').optional().or(z.literal('')),
   noHp: z.string().max(20).optional().or(z.literal('')),

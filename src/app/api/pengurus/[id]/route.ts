@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { pengurusUpdateSchema } from '@/lib/validations/pengurus'
+import { validateScopeUpdate, isScopeError } from '@/lib/scope'
 
 function canManagePengurus(session: { user: { role: string; subRole?: string | null; religionId?: number | null } }) {
   return (
@@ -32,9 +33,11 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       subRole: true,
       status: true,
       religionId: true,
+      tempatIbadahId: true,
       fotoProfil: true,
       createdAt: true,
       religion: { select: { id: true, nama: true } },
+      tempatIbadah: { select: { id: true, nama: true, slug: true } },
     },
   })
   if (!pengurus) return NextResponse.json({ error: 'Pengurus tidak ditemukan' }, { status: 404 })
@@ -42,7 +45,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   // PENGURUS KETUA: hanya lihat agama sendiri
   if (
     session.user.role === 'PENGURUS' &&
-    pengurus.religionId !== session.user.religionId
+    pengurus.tempatIbadahId !== session.user.tempatIbadahId
   ) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
@@ -68,7 +71,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   })
   if (!pengurus) return NextResponse.json({ error: 'Pengurus tidak ditemukan' }, { status: 404 })
 
-  if (session.user.role === 'PENGURUS' && pengurus.religionId !== session.user.religionId) {
+  if (session.user.role === 'PENGURUS' && pengurus.tempatIbadahId !== session.user.tempatIbadahId) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -81,19 +84,27 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   // Email tidak bisa diubah (perlu alur terpisah)
   const { email: _email, ...updateData } = parsed.data
 
-  // PENGURUS KETUA tidak bisa ubah religionId atau buat/ubah ke KETUA
-  if (session.user.role === 'PENGURUS') {
-    if (updateData.religionId) {
-      return NextResponse.json({ error: 'Tidak dapat mengubah agama pengurus' }, { status: 403 })
-    }
-    if (updateData.subRole === 'KETUA') {
-      return NextResponse.json({ error: 'Tidak dapat mengubah sub-role ke Ketua' }, { status: 403 })
-    }
+  // PENGURUS KETUA tidak bisa buat/ubah ke KETUA (scope dicek oleh validateScopeUpdate)
+  if (session.user.role === 'PENGURUS' && updateData.subRole === 'KETUA') {
+    return NextResponse.json({ error: 'Tidak dapat mengubah sub-role ke Ketua' }, { status: 403 })
+  }
+
+  // Validasi perubahan scope (agama/tempat ibadah)
+  if (pengurus.religionId == null || pengurus.tempatIbadahId == null) {
+    return NextResponse.json({ error: 'Data pengurus tidak konsisten' }, { status: 500 })
+  }
+  const scopeRes = await validateScopeUpdate(
+    session,
+    { religionId: pengurus.religionId, tempatIbadahId: pengurus.tempatIbadahId },
+    { religionId: updateData.religionId, tempatIbadahId: updateData.tempatIbadahId }
+  )
+  if (isScopeError(scopeRes)) {
+    return NextResponse.json({ error: scopeRes.error }, { status: scopeRes.status })
   }
 
   const updated = await prisma.user.update({
     where: { id },
-    data: updateData,
+    data: { ...updateData, ...scopeRes },
     select: {
       id: true,
       nama: true,
@@ -101,6 +112,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       subRole: true,
       status: true,
       religionId: true,
+      tempatIbadahId: true,
     },
   })
 
@@ -135,7 +147,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   })
   if (!pengurus) return NextResponse.json({ error: 'Pengurus tidak ditemukan' }, { status: 404 })
 
-  if (session.user.role === 'PENGURUS' && pengurus.religionId !== session.user.religionId) {
+  if (session.user.role === 'PENGURUS' && pengurus.tempatIbadahId !== session.user.tempatIbadahId) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
