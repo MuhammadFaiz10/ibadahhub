@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { pengeluaranCreateSchema } from '@/lib/validations/pengeluaran'
+import { pemasukanCreateSchema } from '@/lib/validations/pemasukan'
 
 function canManageKeuangan(session: { user: { role: string; subRole?: string | null } } | null) {
   if (!session) return false
@@ -40,12 +40,12 @@ export async function GET(req: NextRequest) {
     ...(religionId !== undefined ? { religionId } : {}),
     ...(tempatIbadahId !== undefined ? { tempatIbadahId } : {}),
     ...(rekeningIdQ ? { rekeningId: Number(rekeningIdQ) } : {}),
-    ...(kategori ? { kategori: kategori as 'OPERASIONAL' | 'KEGIATAN' | 'SOSIAL' | 'LAINNYA' } : {}),
+    ...(kategori ? { kategori: kategori as 'DONASI' | 'HIBAH' | 'USAHA' | 'LAINNYA' } : {}),
     ...(search ? { keterangan: { contains: search, mode: 'insensitive' as const } } : {}),
   }
 
   const [data, total, totalNominal] = await Promise.all([
-    prisma.pengeluaran.findMany({
+    prisma.pemasukan.findMany({
       where,
       skip: (page - 1) * limit,
       take: limit,
@@ -57,8 +57,8 @@ export async function GET(req: NextRequest) {
         rekening: { select: { id: true, namaBank: true, nomorRekening: true } },
       },
     }),
-    prisma.pengeluaran.count({ where }),
-    prisma.pengeluaran.aggregate({ where, _sum: { nominal: true } }),
+    prisma.pemasukan.count({ where }),
+    prisma.pemasukan.aggregate({ where, _sum: { nominal: true } }),
   ])
 
   return NextResponse.json({
@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
 
   const isSuperAdmin = session.user.role === 'SUPERADMIN'
   const body = await req.json()
-  const parsed = pengeluaranCreateSchema.safeParse(body)
+  const parsed = pemasukanCreateSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
   }
@@ -115,7 +115,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const pengeluaran = await prisma.pengeluaran.create({
+  const pemasukan = await prisma.pemasukan.create({
     data: {
       keterangan: parsed.data.keterangan,
       nominal: parsed.data.nominal,
@@ -133,11 +133,11 @@ export async function POST(req: NextRequest) {
     data: {
       userId: Number(session.user.id),
       aksi: 'CREATE',
-      model: 'Pengeluaran',
-      recordId: pengeluaran.id,
-      detail: `Tambah pengeluaran ${pengeluaran.keterangan} (Rp ${parsed.data.nominal.toLocaleString('id-ID')})`,
+      model: 'Pemasukan',
+      recordId: pemasukan.id,
+      detail: `Tambah pemasukan ${pemasukan.keterangan} (Rp ${parsed.data.nominal.toLocaleString('id-ID')})`,
     },
   })
 
-  return NextResponse.json({ data: pengeluaran }, { status: 201 })
+  return NextResponse.json({ data: pemasukan }, { status: 201 })
 }

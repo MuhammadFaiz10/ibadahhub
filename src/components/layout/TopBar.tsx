@@ -17,7 +17,7 @@ const routeLabels: Record<string, string> = {
   '/kegiatan':   'Kegiatan Ibadah',
   '/pengumuman': 'Pengumuman',
   '/donasi':     'Donasi',
-  '/pengeluaran':'Pengeluaran',
+  '/kas':        'Kas',
   '/laporan':    'Laporan Keuangan',
   '/rekening':   'Rekening Pembayaran',
   '/aktivitas':  'Activity Log',

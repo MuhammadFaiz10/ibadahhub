@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { pengeluaranUpdateSchema } from '@/lib/validations/pengeluaran'
+import { pemasukanUpdateSchema } from '@/lib/validations/pemasukan'
 import { validateScopeUpdate, isScopeError } from '@/lib/scope'
 
 function canManageKeuangan(session: { user: { role: string; subRole?: string | null } } | null) {
@@ -21,7 +21,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const id = Number(params.id)
   if (isNaN(id) || id <= 0) return NextResponse.json({ error: 'ID tidak valid' }, { status: 400 })
 
-  const pengeluaran = await prisma.pengeluaran.findUnique({
+  const pemasukan = await prisma.pemasukan.findUnique({
     where: { id, deletedAt: null },
     include: {
       religion: { select: { id: true, nama: true } },
@@ -29,16 +29,16 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       rekening: { select: { id: true, namaBank: true, nomorRekening: true } }
     },
   })
-  if (!pengeluaran) return NextResponse.json({ error: 'Pengeluaran tidak ditemukan' }, { status: 404 })
+  if (!pemasukan) return NextResponse.json({ error: 'Pemasukan tidak ditemukan' }, { status: 404 })
 
   if (
     session.user.role === 'PENGURUS' &&
-    pengeluaran.tempatIbadahId !== session.user.tempatIbadahId
+    pemasukan.tempatIbadahId !== session.user.tempatIbadahId
   ) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  return NextResponse.json({ data: pengeluaran })
+  return NextResponse.json({ data: pemasukan })
 }
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
@@ -51,22 +51,22 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   const id = Number(params.id)
   if (isNaN(id) || id <= 0) return NextResponse.json({ error: 'ID tidak valid' }, { status: 400 })
 
-  const pengeluaran = await prisma.pengeluaran.findUnique({ where: { id, deletedAt: null } })
-  if (!pengeluaran) return NextResponse.json({ error: 'Pengeluaran tidak ditemukan' }, { status: 404 })
+  const pemasukan = await prisma.pemasukan.findUnique({ where: { id, deletedAt: null } })
+  if (!pemasukan) return NextResponse.json({ error: 'Pemasukan tidak ditemukan' }, { status: 404 })
 
-  if (session.user.role === 'PENGURUS' && pengeluaran.tempatIbadahId !== session.user.tempatIbadahId) {
+  if (session.user.role === 'PENGURUS' && pemasukan.tempatIbadahId !== session.user.tempatIbadahId) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
   const body = await req.json()
-  const parsed = pengeluaranUpdateSchema.safeParse(body)
+  const parsed = pemasukanUpdateSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
   }
 
   const scopeRes = await validateScopeUpdate(
     session,
-    { religionId: pengeluaran.religionId, tempatIbadahId: pengeluaran.tempatIbadahId },
+    { religionId: pemasukan.religionId, tempatIbadahId: pemasukan.tempatIbadahId },
     { religionId: parsed.data.religionId, tempatIbadahId: parsed.data.tempatIbadahId }
   )
   if (isScopeError(scopeRes)) {
@@ -82,15 +82,15 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     updateData.rekeningId = null
   }
 
-  const updated = await prisma.pengeluaran.update({ where: { id }, data: updateData })
+  const updated = await prisma.pemasukan.update({ where: { id }, data: updateData })
 
   await prisma.activityLog.create({
     data: {
       userId: Number(session.user.id),
       aksi: 'UPDATE',
-      model: 'Pengeluaran',
+      model: 'Pemasukan',
       recordId: id,
-      detail: `Update pengeluaran: ${updated.keterangan}`,
+      detail: `Update pemasukan: ${updated.keterangan}`,
     },
   })
 
@@ -107,10 +107,10 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   const id = Number(params.id)
   if (isNaN(id) || id <= 0) return NextResponse.json({ error: 'ID tidak valid' }, { status: 400 })
 
-  const pengeluaran = await prisma.pengeluaran.findUnique({ where: { id, deletedAt: null } })
-  if (!pengeluaran) return NextResponse.json({ error: 'Pengeluaran tidak ditemukan' }, { status: 404 })
+  const pemasukan = await prisma.pemasukan.findUnique({ where: { id, deletedAt: null } })
+  if (!pemasukan) return NextResponse.json({ error: 'Pemasukan tidak ditemukan' }, { status: 404 })
 
-  if (session.user.role === 'PENGURUS' && pengeluaran.tempatIbadahId !== session.user.tempatIbadahId) {
+  if (session.user.role === 'PENGURUS' && pemasukan.tempatIbadahId !== session.user.tempatIbadahId) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -119,7 +119,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     return NextResponse.json({ error: 'Alasan penghapusan wajib diisi' }, { status: 400 })
   }
 
-  await prisma.pengeluaran.update({
+  await prisma.pemasukan.update({
     where: { id },
     data: { deletedAt: new Date(), deletedReason: alasan },
   })
@@ -128,7 +128,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     data: {
       userId: Number(session.user.id),
       aksi: 'DELETE',
-      model: 'Pengeluaran',
+      model: 'Pemasukan',
       recordId: id,
       detail: alasan,
     },
@@ -147,17 +147,17 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const id = Number(params.id)
   if (isNaN(id) || id <= 0) return NextResponse.json({ error: 'ID tidak valid' }, { status: 400 })
 
-  const pengeluaran = await prisma.pengeluaran.findUnique({ where: { id } })
-  if (!pengeluaran) return NextResponse.json({ error: 'Pengeluaran tidak ditemukan' }, { status: 404 })
-  if (!pengeluaran.deletedAt) {
-    return NextResponse.json({ error: 'Pengeluaran tidak dalam kondisi dihapus' }, { status: 400 })
+  const pemasukan = await prisma.pemasukan.findUnique({ where: { id } })
+  if (!pemasukan) return NextResponse.json({ error: 'Pemasukan tidak ditemukan' }, { status: 404 })
+  if (!pemasukan.deletedAt) {
+    return NextResponse.json({ error: 'Pemasukan tidak dalam kondisi dihapus' }, { status: 400 })
   }
 
-  if (session.user.role === 'PENGURUS' && pengeluaran.tempatIbadahId !== session.user.tempatIbadahId) {
+  if (session.user.role === 'PENGURUS' && pemasukan.tempatIbadahId !== session.user.tempatIbadahId) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  await prisma.pengeluaran.update({
+  await prisma.pemasukan.update({
     where: { id },
     data: { deletedAt: null, deletedReason: null },
   })

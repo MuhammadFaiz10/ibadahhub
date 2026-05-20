@@ -16,6 +16,7 @@ import {
   CreditCard,
   UserCircle,
   Activity,
+  Wallet,
 } from 'lucide-react'
 import { cn, getInisial } from '@/lib/utils'
 import type { NavigationItem } from '@/types'
@@ -30,7 +31,7 @@ const navItems: NavigationItem[] = [
   { label: 'Kegiatan',     href: '/kegiatan',     icon: Calendar,        roles: ['SUPERADMIN', 'PENGURUS', 'JEMAAH'], subRoles: ['KETUA', 'SEKRETARIS'] },
   { label: 'Pengumuman',   href: '/pengumuman',   icon: Megaphone,       roles: ['SUPERADMIN', 'PENGURUS', 'JEMAAH'], subRoles: ['KETUA', 'SEKRETARIS'] },
   { label: 'Donasi',       href: '/donasi',       icon: HandCoins,       roles: ['SUPERADMIN', 'PENGURUS', 'JEMAAH'], subRoles: ['KETUA', 'BENDAHARA'] },
-  { label: 'Pengeluaran',  href: '/pengeluaran',  icon: TrendingDown,    roles: ['SUPERADMIN', 'PENGURUS'], subRoles: ['KETUA', 'BENDAHARA'] },
+  { label: 'Kas',          href: '/kas',          icon: Wallet,          roles: ['SUPERADMIN', 'PENGURUS'], subRoles: ['KETUA', 'BENDAHARA'] },
   { label: 'Laporan',      href: '/laporan',      icon: FileBarChart,    roles: ['SUPERADMIN', 'PENGURUS'], subRoles: ['KETUA', 'BENDAHARA'] },
   { label: 'Rekening',     href: '/rekening',     icon: CreditCard,      roles: ['SUPERADMIN', 'PENGURUS'], subRoles: ['KETUA'] },
   { label: 'Aktivitas',    href: '/aktivitas',    icon: Activity,        roles: ['SUPERADMIN'] },

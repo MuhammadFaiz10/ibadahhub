@@ -54,6 +54,13 @@ enum KategoriPengeluaran {
   LAINNYA
 }
 
+enum KategoriPemasukan {
+  DONASI
+  HIBAH
+  USAHA
+  LAINNYA
+}
+
 enum StatusRekening {
   AKTIF
   NONAKTIF
@@ -86,6 +93,7 @@ model Religion {
   pengumuman   Pengumuman[]
   donasi       Donasi[]
   pengeluaran  Pengeluaran[]
+  pemasukan    Pemasukan[]
   rekening     Rekening[]
   jemaah       Jemaah[]
   tempatIbadah TempatIbadah[]
@@ -119,6 +127,7 @@ model TempatIbadah {
   pengumuman  Pengumuman[]
   donasi      Donasi[]
   pengeluaran Pengeluaran[]
+  pemasukan   Pemasukan[]
   rekening    Rekening[]
 
   @@index([religionId])
@@ -146,6 +155,7 @@ model User {
   donasi              Donasi[]              @relation("DonasiByUser")
   konfirmasiDonasi    Donasi[]              @relation("KonfirmasiBy")
   pengeluaran         Pengeluaran[]
+  pemasukan           Pemasukan[]
   notifikasi          Notifikasi[]
   activityLogs        ActivityLog[]
   sessions            Session[]
@@ -310,6 +320,7 @@ model Pengeluaran {
   tanggal        DateTime
   kategori       KategoriPengeluaran
   bukti          String?
+  rekeningId     Int?
   createdBy      Int
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
@@ -319,6 +330,31 @@ model Pengeluaran {
   religion     Religion     @relation(fields: [religionId], references: [id])
   tempatIbadah TempatIbadah @relation(fields: [tempatIbadahId], references: [id])
   user         User         @relation(fields: [createdBy], references: [id])
+  rekening     Rekening?    @relation(fields: [rekeningId], references: [id])
+
+  @@index([tempatIbadahId])
+}
+
+model Pemasukan {
+  id             Int               @id @default(autoincrement())
+  religionId     Int
+  tempatIbadahId Int
+  keterangan     String
+  nominal        Decimal           @db.Decimal(15, 2)
+  tanggal        DateTime
+  kategori       KategoriPemasukan
+  bukti          String?
+  rekeningId     Int?
+  createdBy      Int
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  deletedAt      DateTime?
+  deletedReason  String?
+
+  religion     Religion     @relation(fields: [religionId], references: [id])
+  tempatIbadah TempatIbadah @relation(fields: [tempatIbadahId], references: [id])
+  user         User         @relation(fields: [createdBy], references: [id])
+  rekening     Rekening?    @relation(fields: [rekeningId], references: [id])
 
   @@index([tempatIbadahId])
 }
@@ -335,9 +371,11 @@ model Rekening {
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
-  religion     Religion     @relation(fields: [religionId], references: [id])
-  tempatIbadah TempatIbadah @relation(fields: [tempatIbadahId], references: [id])
+  religion     Religion      @relation(fields: [religionId], references: [id])
+  tempatIbadah TempatIbadah  @relation(fields: [tempatIbadahId], references: [id])
   donasi       Donasi[]
+  pengeluaran  Pengeluaran[]
+  pemasukan    Pemasukan[]
 
   @@index([tempatIbadahId])
 }
