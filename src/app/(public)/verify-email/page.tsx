@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import axios from 'axios'
@@ -9,6 +9,14 @@ import { Loader2, CheckCircle2, XCircle, Mail } from 'lucide-react'
 type Status = 'pending' | 'success' | 'error' | 'already'
 
 export default function VerifyEmailPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gradient-to-br from-primary-light to-white" />}>
+      <VerifyEmailInner />
+    </Suspense>
+  )
+}
+
+function VerifyEmailInner() {
   const searchParams = useSearchParams()
   const token = searchParams.get('token') ?? ''
   const [status, setStatus] = useState<Status>('pending')

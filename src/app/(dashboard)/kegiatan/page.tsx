@@ -22,6 +22,7 @@ interface Kegiatan {
   waktuMulai: string
   waktuSelesai: string | null
   lokasi: string
+  pemimpin: string | null
   deskripsi: string | null
   kapasitas: number | null
   status: string
@@ -82,9 +83,17 @@ export default function KegiatanPage() {
       render: (r) => (
         <div>
           <p className="font-medium text-gray-900">{r.namaKegiatan}</p>
-          <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-0.5">
-            <MapPin size={11} className="text-gray-400" />
-            {r.lokasi}
+          <div className="flex items-center gap-3 text-xs text-gray-500 mt-0.5">
+            <span className="flex items-center gap-1.5">
+              <MapPin size={11} className="text-gray-400" />
+              {r.lokasi}
+            </span>
+            {r.pemimpin && (
+              <span className="flex items-center gap-1.5">
+                <Users size={11} className="text-gray-400" />
+                {r.pemimpin}
+              </span>
+            )}
           </div>
         </div>
       ),

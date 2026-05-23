@@ -41,14 +41,14 @@ export function DataTable<T extends { id?: number | string }>({
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
       {/* Table */}
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+      <div className="overflow-x-auto scrollbar-thin -webkit-overflow-scrolling-touch">
+        <table className="w-full text-sm min-w-max">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
               {columns.map((col) => (
                 <th
                   key={col.key}
-                  className={`px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider ${col.className ?? ''}`}
+                  className={`px-3 sm:px-4 py-3 text-left text-[11px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap ${col.className ?? ''}`}
                 >
                   {col.header}
                 </th>
@@ -60,7 +60,7 @@ export function DataTable<T extends { id?: number | string }>({
               Array.from({ length: 5 }).map((_, i) => (
                 <tr key={i}>
                   {columns.map((col) => (
-                    <td key={col.key} className="px-4 py-3">
+                    <td key={col.key} className="px-3 sm:px-4 py-3">
                       <div className="h-4 bg-gray-100 rounded animate-pulse" />
                     </td>
                   ))}
@@ -76,7 +76,7 @@ export function DataTable<T extends { id?: number | string }>({
               data.map((row, idx) => (
                 <tr key={(row as { id?: number | string }).id ?? idx} className="hover:bg-gray-50 transition-colors">
                   {columns.map((col) => (
-                    <td key={col.key} className={`px-4 py-3 text-gray-700 ${col.className ?? ''}`}>
+                    <td key={col.key} className={`px-3 sm:px-4 py-3 text-gray-700 ${col.className ?? ''}`}>
                       {col.render
                         ? col.render(row)
                         : String((row as Record<string, unknown>)[col.key] ?? '')}
@@ -91,18 +91,19 @@ export function DataTable<T extends { id?: number | string }>({
 
       {/* Footer / Pagination */}
       {!isLoading && total > 0 && (
-        <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-500">
-              Menampilkan {start}–{end} dari {total} data
+        <div className="px-3 sm:px-4 py-3 border-t border-gray-200 flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+            <span className="text-[11px] sm:text-xs text-gray-500">
+              {start}–{end} <span className="text-gray-400">dari {total}</span>
             </span>
             <select
               value={limit}
               onChange={(e) => onLimitChange(Number(e.target.value))}
               className="text-xs border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary"
+              aria-label="Jumlah baris per halaman"
             >
               {[10, 25, 50].map((n) => (
-                <option key={n} value={n}>{n} per halaman</option>
+                <option key={n} value={n}>{n}/hal</option>
               ))}
             </select>
           </div>
@@ -112,9 +113,10 @@ export function DataTable<T extends { id?: number | string }>({
               <button
                 onClick={() => onPageChange(page - 1)}
                 disabled={page <= 1}
-                className="px-3 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="px-2.5 sm:px-3 py-1.5 text-xs border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                aria-label="Halaman sebelumnya"
               >
-                ← Prev
+                ←
               </button>
 
               {Array.from({ length: Math.min(5, totalPages) }).map((_, i) => {
@@ -123,7 +125,7 @@ export function DataTable<T extends { id?: number | string }>({
                   <button
                     key={pageNum}
                     onClick={() => onPageChange(pageNum)}
-                    className={`px-3 py-1 text-xs border rounded ${
+                    className={`min-w-[34px] px-2 py-1.5 text-xs border rounded ${
                       pageNum === page
                         ? 'bg-primary text-white border-primary'
                         : 'border-gray-300 hover:bg-gray-50'
@@ -137,9 +139,10 @@ export function DataTable<T extends { id?: number | string }>({
               <button
                 onClick={() => onPageChange(page + 1)}
                 disabled={page >= totalPages}
-                className="px-3 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="px-2.5 sm:px-3 py-1.5 text-xs border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                aria-label="Halaman berikutnya"
               >
-                Next →
+                →
               </button>
             </div>
           )}

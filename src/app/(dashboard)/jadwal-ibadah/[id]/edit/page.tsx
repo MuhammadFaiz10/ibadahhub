@@ -8,19 +8,11 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
 import axios from 'axios'
 import { Loader2, ArrowLeft } from 'lucide-react'
-import { kegiatanUpdateSchema, type KegiatanUpdateInput } from '@/lib/validations/kegiatan'
+import { jadwalIbadahUpdateSchema, type JadwalIbadahUpdateInput } from '@/lib/validations/jadwal-ibadah'
 import { PageHeader } from '@/components/shared/PageHeader'
-
 import { ScopeSelector } from '@/components/shared/ScopeSelector'
 
-const statusOptions = [
-  { value: 'UPCOMING', label: 'Upcoming' },
-  { value: 'ONGOING', label: 'Ongoing' },
-  { value: 'SELESAI', label: 'Selesai' },
-  { value: 'DIBATALKAN', label: 'Dibatalkan' },
-]
-
-export default function KegiatanEditPage() {
+export default function JadwalIbadahEditPage() {
   const router = useRouter()
   const params = useParams<{ id: string }>()
   const { data: session } = useSession()
@@ -34,42 +26,41 @@ export default function KegiatanEditPage() {
     setValue,
     watch,
     formState: { errors, isSubmitting },
-  } = useForm<KegiatanUpdateInput>({ resolver: zodResolver(kegiatanUpdateSchema) })
+  } = useForm<JadwalIbadahUpdateInput>({ resolver: zodResolver(jadwalIbadahUpdateSchema) })
 
   useEffect(() => {
     axios
-      .get(`/api/kegiatan/${params.id}`)
+      .get(`/api/jadwal-ibadah/${params.id}`)
       .then((res) => {
         const d = res.data.data
         reset({
-          namaKegiatan: d.namaKegiatan,
+          namaIbadah: d.namaIbadah,
           tanggal: new Date(d.tanggal).toISOString().slice(0, 10),
           waktuMulai: d.waktuMulai,
           waktuSelesai: d.waktuSelesai ?? '',
-          lokasi: d.lokasi,
+          lokasi: d.lokasi ?? '',
           pemimpin: d.pemimpin ?? '',
-          deskripsi: d.deskripsi ?? '',
-          kapasitas: d.kapasitas ?? undefined,
-          status: d.status,
+          pendamping: d.pendamping ?? '',
+          catatan: d.catatan ?? '',
           religionId: d.religionId,
           tempatIbadahId: d.tempatIbadahId,
         })
         setReadonly({ religion: d.religion?.nama, tempatIbadah: d.tempatIbadah?.nama })
       })
       .catch(() => {
-        toast.error('Gagal memuat data')
-        router.push('/kegiatan')
+        toast.error('Gagal memuat data jadwal')
+        router.push('/jadwal-ibadah')
       })
   }, [params.id, reset, router])
 
-  async function onSubmit(data: KegiatanUpdateInput) {
+  async function onSubmit(data: JadwalIbadahUpdateInput) {
     try {
-      await axios.put(`/api/kegiatan/${params.id}`, data)
-      toast.success('Kegiatan berhasil diperbarui')
-      router.push('/kegiatan')
+      await axios.put(`/api/jadwal-ibadah/${params.id}`, data)
+      toast.success('Jadwal ibadah berhasil diperbarui')
+      router.push('/jadwal-ibadah')
     } catch (err) {
       if (axios.isAxiosError(err)) {
-        toast.error(err.response?.data?.error ?? 'Gagal memperbarui kegiatan')
+        toast.error(err.response?.data?.error ?? 'Gagal memperbarui jadwal')
       }
     }
   }
@@ -77,8 +68,8 @@ export default function KegiatanEditPage() {
   return (
     <div className="max-w-2xl mx-auto">
       <PageHeader
-        title="Edit Kegiatan"
-        subtitle="Perbarui detail kegiatan"
+        title="Edit Jadwal Ibadah"
+        subtitle="Perbarui jadwal ibadah rutin"
         action={
           <button
             onClick={() => router.back()}
@@ -92,13 +83,13 @@ export default function KegiatanEditPage() {
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nama Kegiatan</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Nama Ibadah</label>
             <input
               type="text"
-              {...register('namaKegiatan')}
+              {...register('namaIbadah')}
               className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             />
-            {errors.namaKegiatan && <p className="mt-1 text-xs text-red-600">{errors.namaKegiatan.message}</p>}
+            {errors.namaIbadah && <p className="mt-1 text-xs text-red-600">{errors.namaIbadah.message}</p>}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -130,54 +121,39 @@ export default function KegiatanEditPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Lokasi</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Pemimpin Ibadah</label>
               <input
                 type="text"
-                {...register('lokasi')}
+                {...register('pemimpin')}
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Pemimpin Ibadah / Kegiatan</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Pendamping / Petugas Lain</label>
               <input
                 type="text"
-                {...register('pemimpin')}
-                placeholder="Nama pemimpin (opsional)"
+                {...register('pendamping')}
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Deskripsi</label>
-            <textarea
-              rows={3}
-              {...register('deskripsi')}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+            <label className="block text-sm font-medium text-gray-700 mb-1">Lokasi</label>
+            <input
+              type="text"
+              {...register('lokasi')}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Kapasitas</label>
-              <input
-                type="number"
-                min={0}
-                {...register('kapasitas')}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-              <select
-                {...register('status')}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                {statusOptions.map((s) => (
-                  <option key={s.value} value={s.value}>{s.label}</option>
-                ))}
-              </select>
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Catatan</label>
+            <textarea
+              rows={2}
+              {...register('catatan')}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+            />
           </div>
 
           {isSuperAdmin ? (

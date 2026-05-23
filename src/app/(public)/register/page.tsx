@@ -8,6 +8,7 @@ import { z } from 'zod'
 import { toast } from 'sonner'
 import axios from 'axios'
 import { Loader2, Mail, CheckCircle2, Wrench } from 'lucide-react'
+import { Logo } from '@/components/shared/Logo'
 
 const registerSchema = z
   .object({
@@ -180,10 +181,11 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-light to-white flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white rounded-xl shadow-lg p-8">
-        <div className="text-center mb-8">
-          <h1 className="font-serif text-3xl font-bold text-primary-dark">IbadahHub</h1>
-          <p className="text-gray-500 mt-2 text-sm">Daftar sebagai Jemaah</p>
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-6 sm:p-8">
+        <div className="text-center mb-6 sm:mb-8 flex flex-col items-center">
+          <Logo size={56} priority className="mb-3" />
+          <h1 className="font-serif text-2xl sm:text-3xl font-bold text-primary-dark">IbadahHub</h1>
+          <p className="text-gray-500 mt-1.5 text-sm">Daftar sebagai Jemaah</p>
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">

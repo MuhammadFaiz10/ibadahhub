@@ -78,6 +78,13 @@ enum StatusPendaftaran {
   BATAL
 }
 
+enum StatusTagihanKas {
+  BELUM_DIBAYAR
+  MENUNGGU_KONFIRMASI
+  LUNAS
+  DIBATALKAN
+}
+
 // ─── TABEL UTAMA ─────────────────────────────────────────
 
 model Religion {
@@ -97,6 +104,8 @@ model Religion {
   rekening     Rekening[]
   jemaah       Jemaah[]
   tempatIbadah TempatIbadah[]
+  tagihanKas   TagihanKas[]
+  jadwalIbadah JadwalIbadah[]
 }
 
 model TempatIbadah {
@@ -120,15 +129,17 @@ model TempatIbadah {
   updatedAt  DateTime           @updatedAt
   deletedAt  DateTime?
 
-  religion    Religion      @relation(fields: [religionId], references: [id])
-  users       User[]
-  jemaah      Jemaah[]
-  kegiatan    Kegiatan[]
-  pengumuman  Pengumuman[]
-  donasi      Donasi[]
-  pengeluaran Pengeluaran[]
-  pemasukan   Pemasukan[]
-  rekening    Rekening[]
+  religion     Religion       @relation(fields: [religionId], references: [id])
+  users        User[]
+  jemaah       Jemaah[]
+  kegiatan     Kegiatan[]
+  pengumuman   Pengumuman[]
+  donasi       Donasi[]
+  pengeluaran  Pengeluaran[]
+  pemasukan    Pemasukan[]
+  rekening     Rekening[]
+  tagihanKas   TagihanKas[]
+  jadwalIbadah JadwalIbadah[]
 
   @@index([religionId])
 }
@@ -160,6 +171,9 @@ model User {
   activityLogs        ActivityLog[]
   sessions            Session[]
   kegiatanPendaftaran KegiatanPendaftaran[]
+  tagihanKasDibuat    TagihanKas[]
+  konfirmasiTagihan   TagihanKasJemaah[]    @relation("KonfirmasiTagihan")
+  jadwalIbadahDibuat  JadwalIbadah[]
 }
 
 model Session {
@@ -193,10 +207,11 @@ model Jemaah {
   updatedAt      DateTime  @updatedAt
   deletedAt      DateTime?
 
-  user         User?        @relation(fields: [userId], references: [id])
-  religion     Religion     @relation(fields: [religionId], references: [id])
-  tempatIbadah TempatIbadah @relation(fields: [tempatIbadahId], references: [id])
+  user         User?              @relation(fields: [userId], references: [id])
+  religion     Religion           @relation(fields: [religionId], references: [id])
+  tempatIbadah TempatIbadah       @relation(fields: [tempatIbadahId], references: [id])
   donasi       Donasi[]
+  tagihanKas   TagihanKasJemaah[]
 
   @@index([tempatIbadahId])
 }
@@ -210,6 +225,7 @@ model Kegiatan {
   waktuMulai     String
   waktuSelesai   String?
   lokasi         String
+  pemimpin       String?
   deskripsi      String?
   kapasitas      Int?
   status         StatusKegiatan @default(UPCOMING)
@@ -351,10 +367,11 @@ model Pemasukan {
   deletedAt      DateTime?
   deletedReason  String?
 
-  religion     Religion     @relation(fields: [religionId], references: [id])
-  tempatIbadah TempatIbadah @relation(fields: [tempatIbadahId], references: [id])
-  user         User         @relation(fields: [createdBy], references: [id])
-  rekening     Rekening?    @relation(fields: [rekeningId], references: [id])
+  religion     Religion           @relation(fields: [religionId], references: [id])
+  tempatIbadah TempatIbadah       @relation(fields: [tempatIbadahId], references: [id])
+  user         User               @relation(fields: [createdBy], references: [id])
+  rekening     Rekening?          @relation(fields: [rekeningId], references: [id])
+  tagihanKas   TagihanKasJemaah[]
 
   @@index([tempatIbadahId])
 }
@@ -402,4 +419,71 @@ model ActivityLog {
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id])
+}
+
+model TagihanKas {
+  id             Int       @id @default(autoincrement())
+  religionId     Int
+  tempatIbadahId Int
+  nama           String
+  deskripsi      String?   @db.Text
+  nominal        Decimal   @db.Decimal(15, 2)
+  jatuhTempo     DateTime?
+  createdBy      Int
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  religion      Religion           @relation(fields: [religionId], references: [id])
+  tempatIbadah  TempatIbadah       @relation(fields: [tempatIbadahId], references: [id])
+  user          User               @relation(fields: [createdBy], references: [id])
+  tagihanJemaah TagihanKasJemaah[]
+
+  @@index([tempatIbadahId])
+}
+
+model TagihanKasJemaah {
+  id               Int               @id @default(autoincrement())
+  tagihanId        Int
+  jemaahId         Int
+  status           StatusTagihanKas  @default(BELUM_DIBAYAR)
+  buktiPembayaran  String?
+  metodePembayaran MetodePembayaran?
+  pemasukanId      Int?
+  tanggalBayar     DateTime?
+  dikonfirmasiOleh Int?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  tagihan      TagihanKas @relation(fields: [tagihanId], references: [id], onDelete: Cascade)
+  jemaah       Jemaah     @relation(fields: [jemaahId], references: [id], onDelete: Cascade)
+  pemasukan    Pemasukan? @relation(fields: [pemasukanId], references: [id])
+  konfirmasiBy User?      @relation("KonfirmasiTagihan", fields: [dikonfirmasiOleh], references: [id])
+
+  @@unique([tagihanId, jemaahId])
+}
+
+model JadwalIbadah {
+  id             Int       @id @default(autoincrement())
+  religionId     Int
+  tempatIbadahId Int
+  namaIbadah     String
+  tanggal        DateTime
+  waktuMulai     String
+  waktuSelesai   String?
+  pemimpin       String?
+  pendamping     String?
+  lokasi         String?
+  catatan        String?   @db.Text
+  createdBy      Int
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  religion     Religion     @relation(fields: [religionId], references: [id])
+  tempatIbadah TempatIbadah @relation(fields: [tempatIbadahId], references: [id])
+  user         User         @relation(fields: [createdBy], references: [id])
+
+  @@index([tempatIbadahId])
+  @@index([tanggal])
 }

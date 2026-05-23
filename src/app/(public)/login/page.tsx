@@ -9,6 +9,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
 import { Eye, EyeOff, Loader2 } from 'lucide-react'
+import { Logo } from '@/components/shared/Logo'
 
 const loginSchema = z.object({
   email: z.string().email('Format email tidak valid'),
@@ -46,11 +47,12 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-light to-white flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white rounded-xl shadow-lg p-8">
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-6 sm:p-8">
         {/* Logo */}
-        <div className="text-center mb-8">
-          <h1 className="font-serif text-3xl font-bold text-primary-dark">IbadahHub</h1>
-          <p className="text-gray-500 mt-2 text-sm">Masuk ke akun Anda</p>
+        <div className="text-center mb-6 sm:mb-8 flex flex-col items-center">
+          <Logo size={64} priority className="mb-3" />
+          <h1 className="font-serif text-2xl sm:text-3xl font-bold text-primary-dark">IbadahHub</h1>
+          <p className="text-gray-500 mt-1.5 text-sm">Masuk ke akun Anda</p>
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">

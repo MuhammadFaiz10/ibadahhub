@@ -18,13 +18,13 @@ interface StatCardProps {
 
 function StatCard({ title, value, icon, color }: StatCardProps) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5 flex items-center gap-4">
-      <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${color}`}>
+    <div className="bg-white rounded-xl border border-gray-200 p-3 sm:p-5 flex items-center gap-3 sm:gap-4">
+      <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center shrink-0 ${color}`}>
         {icon}
       </div>
-      <div>
-        <p className="text-sm text-gray-500">{title}</p>
-        <p className="text-2xl font-bold text-gray-900">{value.toLocaleString('id-ID')}</p>
+      <div className="min-w-0">
+        <p className="text-xs sm:text-sm text-gray-500 truncate">{title}</p>
+        <p className="text-xl sm:text-2xl font-bold text-gray-900">{value.toLocaleString('id-ID')}</p>
       </div>
     </div>
   )
@@ -106,11 +106,11 @@ export default async function DashboardPage() {
   return (
     <div>
       {/* Welcome */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold text-gray-900">
+      <div className="mb-5 sm:mb-8">
+        <h1 className="text-lg sm:text-2xl font-semibold text-gray-900">
           Selamat datang, {session.user.name}!
         </h1>
-        <p className="text-gray-500 mt-1 text-sm">
+        <p className="text-gray-500 mt-0.5 sm:mt-1 text-xs sm:text-sm">
           {isSuperAdmin
             ? 'Anda login sebagai Super Admin'
             : `Pengurus ${session.user.subRole} — ${session.user.religionName ?? ''}`}
@@ -118,7 +118,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {isSuperAdmin && (
           <StatCard
             title="Total Agama"

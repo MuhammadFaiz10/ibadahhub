@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
@@ -23,6 +23,14 @@ const schema = z
 type Input = z.infer<typeof schema>
 
 export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gradient-to-br from-primary-light to-white" />}>
+      <ResetPasswordInner />
+    </Suspense>
+  )
+}
+
+function ResetPasswordInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const token = searchParams.get('token') ?? ''

@@ -17,8 +17,11 @@ import {
   UserCircle,
   Activity,
   Wallet,
+  Receipt,
+  Clock,
 } from 'lucide-react'
 import { cn, getInisial } from '@/lib/utils'
+import { Logo } from '@/components/shared/Logo'
 import type { NavigationItem } from '@/types'
 import type { Session } from 'next-auth'
 
@@ -29,9 +32,11 @@ const navItems: NavigationItem[] = [
   { label: 'Pengurus',     href: '/pengurus',     icon: UserCheck,       roles: ['SUPERADMIN', 'PENGURUS'], subRoles: ['KETUA'] },
   { label: 'Jemaah',       href: '/jemaah',       icon: Users,           roles: ['SUPERADMIN', 'PENGURUS'], subRoles: ['KETUA', 'SEKRETARIS'] },
   { label: 'Kegiatan',     href: '/kegiatan',     icon: Calendar,        roles: ['SUPERADMIN', 'PENGURUS', 'JEMAAH'], subRoles: ['KETUA', 'SEKRETARIS'] },
+  { label: 'Jadwal Ibadah',href: '/jadwal-ibadah',icon: Clock,           roles: ['SUPERADMIN', 'PENGURUS', 'JEMAAH'], subRoles: ['KETUA', 'SEKRETARIS'] },
   { label: 'Pengumuman',   href: '/pengumuman',   icon: Megaphone,       roles: ['SUPERADMIN', 'PENGURUS', 'JEMAAH'], subRoles: ['KETUA', 'SEKRETARIS'] },
   { label: 'Donasi',       href: '/donasi',       icon: HandCoins,       roles: ['SUPERADMIN', 'PENGURUS', 'JEMAAH'], subRoles: ['KETUA', 'BENDAHARA'] },
   { label: 'Kas',          href: '/kas',          icon: Wallet,          roles: ['SUPERADMIN', 'PENGURUS'], subRoles: ['KETUA', 'BENDAHARA'] },
+  { label: 'Kas Saya',     href: '/kas-saya',     icon: Receipt,         roles: ['JEMAAH'] },
   { label: 'Laporan',      href: '/laporan',      icon: FileBarChart,    roles: ['SUPERADMIN', 'PENGURUS'], subRoles: ['KETUA', 'BENDAHARA'] },
   { label: 'Rekening',     href: '/rekening',     icon: CreditCard,      roles: ['SUPERADMIN', 'PENGURUS'], subRoles: ['KETUA'] },
   { label: 'Aktivitas',    href: '/aktivitas',    icon: Activity,        roles: ['SUPERADMIN'] },
@@ -58,9 +63,12 @@ export function Sidebar({ session, onNavigate }: SidebarProps) {
   return (
     <aside className="w-64 flex-shrink-0 bg-white border-r border-gray-200 flex flex-col h-full shadow-lg md:shadow-none">
       {/* Logo */}
-      <div className="px-6 py-5 border-b border-gray-100">
-        <h1 className="font-serif text-xl font-bold text-primary-dark">IbadahHub</h1>
-        <p className="text-xs text-gray-400 mt-0.5">Platform Ibadah Digital</p>
+      <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-3">
+        <Logo size={40} priority />
+        <div className="min-w-0">
+          <h1 className="font-serif text-lg font-bold text-primary-dark leading-tight">IbadahHub</h1>
+          <p className="text-[11px] text-gray-400 mt-0.5">Platform Ibadah Digital</p>
+        </div>
       </div>
 
       {/* Navigation */}

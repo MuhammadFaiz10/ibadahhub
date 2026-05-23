@@ -17,6 +17,7 @@ import {
   Bell,
   ChevronRight,
 } from 'lucide-react'
+import { Logo } from '@/components/shared/Logo'
 
 export const metadata: Metadata = { title: 'IbadahHub — Platform Digital Tempat Ibadah' }
 
@@ -83,20 +84,25 @@ export default async function HomePage() {
     <div className="min-h-screen bg-white font-sans">
       {/* ── Navbar ─────────────────────────────────────── */}
       <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
-        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <span className="font-serif text-xl font-bold text-primary-dark">IbadahHub</span>
-          <div className="flex items-center gap-3">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+          <Link href="/" className="flex items-center gap-2.5 min-w-0">
+            <Logo size={36} priority />
+            <span className="font-serif text-lg sm:text-xl font-bold text-primary-dark truncate">
+              IbadahHub
+            </span>
+          </Link>
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <Link
               href="/login"
-              className="text-sm font-medium text-gray-600 hover:text-primary-dark transition-colors px-4 py-2 rounded-lg hover:bg-primary-light"
+              className="text-sm font-medium text-gray-600 hover:text-primary-dark transition-colors px-3 sm:px-4 py-2 rounded-lg hover:bg-primary-light"
             >
               Masuk
             </Link>
             <Link
               href="/register"
-              className="text-sm font-semibold bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors"
+              className="text-sm font-semibold bg-primary text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors whitespace-nowrap"
             >
-              Daftar Gratis
+              Daftar <span className="hidden sm:inline">Gratis</span>
             </Link>
           </div>
         </div>

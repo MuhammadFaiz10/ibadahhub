@@ -7,6 +7,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { cn, getInisial } from '@/lib/utils'
 import { useNotifikasiCount } from '@/hooks/useNotifikasi'
+import { Logo } from '@/components/shared/Logo'
 import type { Session } from 'next-auth'
 
 const routeLabels: Record<string, string> = {
@@ -40,24 +41,30 @@ export function TopBar({ session, onMenuClick }: TopBarProps) {
   )?.[1] ?? 'IbadahHub'
 
   return (
-    <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-6 flex-shrink-0 gap-2">
+    <header className="h-14 sm:h-16 bg-white border-b border-gray-200 flex items-center justify-between px-3 sm:px-6 flex-shrink-0 gap-2 safe-pt">
       <div className="flex items-center gap-2 min-w-0">
         {/* Hamburger (mobile saja) */}
         <button
           onClick={onMenuClick}
-          className="md:hidden p-2 -ml-1 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors"
+          className="md:hidden p-2 -ml-1 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors active:bg-gray-200"
           aria-label="Buka menu"
         >
-          <Menu size={20} />
+          <Menu size={22} />
         </button>
+        {/* Logo (mobile) - sidebar tertutup di mobile, jadi tampilkan brand di topbar */}
+        <Logo size={28} className="md:hidden" />
         <h2 className="text-sm sm:text-base font-semibold text-gray-800 truncate">
           {pageTitle}
         </h2>
       </div>
 
-      <div className="flex items-center gap-1 sm:gap-3 flex-shrink-0">
+      <div className="flex items-center gap-0.5 sm:gap-3 flex-shrink-0">
         {/* Notification Bell */}
-        <Link href="/notifikasi" className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors">
+        <Link
+          href="/notifikasi"
+          className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors active:bg-gray-200"
+          aria-label={`Notifikasi${unreadCount > 0 ? ` (${unreadCount} belum dibaca)` : ''}`}
+        >
           <Bell size={20} className="text-gray-500" />
           {unreadCount > 0 && (
             <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">

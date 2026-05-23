@@ -38,6 +38,7 @@ interface KegiatanEvent {
   waktuMulai: string
   waktuSelesai: string | null
   lokasi: string
+  pemimpin: string | null
   deskripsi: string | null
   kapasitas: number | null
   status: 'UPCOMING' | 'ONGOING' | 'SELESAI' | 'DIBATALKAN'
@@ -322,6 +323,12 @@ export function KegiatanCalendar() {
                           <MapPin size={11} className="text-gray-400 flex-shrink-0" />
                           <span className="truncate">{e.lokasi}</span>
                         </span>
+                        {e.pemimpin && (
+                          <span className="flex items-center gap-1 truncate">
+                            <Users size={11} className="text-gray-400 flex-shrink-0" />
+                            <span className="truncate">{e.pemimpin}</span>
+                          </span>
+                        )}
                       </div>
                     </div>
                   </button>
@@ -461,6 +468,13 @@ function EventDetailModal({ event, onClose }: { event: KegiatanEvent; onClose: (
             <MapPin size={16} className="text-gray-400 mt-0.5 flex-shrink-0" />
             <p className="text-sm text-gray-700">{event.lokasi}</p>
           </div>
+
+          {event.pemimpin && (
+            <div className="flex items-start gap-3">
+              <Users size={16} className="text-gray-400 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-gray-700">Pemimpin: <span className="font-medium">{event.pemimpin}</span></p>
+            </div>
+          )}
 
           {event.kapasitas != null && (
             <div className="flex items-start gap-3">

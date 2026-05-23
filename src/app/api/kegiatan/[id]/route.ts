@@ -78,6 +78,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     updateData.tanggal = new Date(updateData.tanggal as string)
   }
   if (updateData.waktuSelesai === '') updateData.waktuSelesai = null
+  if (updateData.pemimpin === '') updateData.pemimpin = null
   if (updateData.deskripsi === '') updateData.deskripsi = null
 
   const updated = await prisma.kegiatan.update({
