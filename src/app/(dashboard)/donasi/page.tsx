@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from 'react'
 import Link from 'next/link'
 import axios from 'axios'
 import { toast } from 'sonner'
-import { Plus, Pencil, Trash2, Check, X, HandCoins, CreditCard } from 'lucide-react'
+import { Plus, Pencil, Trash2, Check, X, HandCoins, CreditCard, Download, Filter } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { SearchFilter } from '@/components/shared/SearchFilter'
@@ -15,6 +15,8 @@ import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { formatRupiah, formatTanggal } from '@/lib/utils'
 import { useDataFetch } from '@/hooks/useDataFetch'
+import jsPDF from 'jspdf'
+import 'jspdf-autotable'
 
 interface Donasi {
   id: number
@@ -41,6 +43,14 @@ const statusOptions = [
   { value: 'DITOLAK', label: 'Ditolak' },
 ]
 
+const metodeOptions = [
+  { value: '', label: 'Semua Metode' },
+  { value: 'TRANSFER_BANK', label: 'Transfer Bank' },
+  { value: 'TUNAI', label: 'Tunai' },
+  { value: 'MIDTRANS', label: 'Online (Midtrans)' },
+  { value: 'QRIS', label: 'QRIS' },
+]
+
 export default function DonasiPage() {
   const { data: session } = useSession()
   const role = session?.user.role
@@ -56,6 +66,11 @@ export default function DonasiPage() {
   const [status, setStatus] = useState('')
   const [filterReligionId, setFilterReligionId] = useState<number | undefined>(undefined)
   const [filterTempatIbadahId, setFilterTempatIbadahId] = useState<number | undefined>(undefined)
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+  const [metodePembayaran, setMetodePembayaran] = useState('')
+  const [showFilters, setShowFilters] = useState(false)
+  
   const [deleteTarget, setDeleteTarget] = useState<Donasi | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [totalDikonfirmasi, setTotalDikonfirmasi] = useState('0')
@@ -68,7 +83,36 @@ export default function DonasiPage() {
     search, page, limit, status,
     religionId: filterReligionId,
     tempatIbadahId: filterTempatIbadahId,
+    startDate, endDate, metodePembayaran
   })
+
+  const exportPDF = () => {
+    const doc = new jsPDF()
+    doc.text('Laporan Donasi', 14, 15)
+    doc.setFontSize(10)
+    let subtitle = 'Semua Donasi'
+    if (startDate && endDate) subtitle = `Periode: ${startDate} s.d ${endDate}`
+    doc.text(subtitle, 14, 22)
+    
+    const tableData = data.map((d, i) => [
+      i + 1,
+      formatTanggal(d.tanggal),
+      d.namaDonatur,
+      d.metodePembayaran,
+      d.status,
+      formatRupiah(d.nominal)
+    ])
+
+    ;(doc as any).autoTable({
+      startY: 28,
+      head: [['No', 'Tanggal', 'Donatur', 'Metode', 'Status', 'Nominal']],
+      body: tableData,
+      theme: 'grid',
+      headStyles: { fillColor: [85, 27, 20] } // #551b14 (primary)
+    })
+    
+    doc.save(`Laporan_Donasi_${new Date().getTime()}.pdf`)
+  }
 
   function loadSnapScript(url: string, clientKey: string): Promise<void> {
     return new Promise((resolve, reject) => {
@@ -111,12 +155,15 @@ export default function DonasiPage() {
     if (status) params.set('status', status)
     if (filterReligionId) params.set('religionId', String(filterReligionId))
     if (filterTempatIbadahId) params.set('tempatIbadahId', String(filterTempatIbadahId))
+    if (startDate) params.set('startDate', startDate)
+    if (endDate) params.set('endDate', endDate)
+    if (metodePembayaran) params.set('metodePembayaran', metodePembayaran)
     params.set('page', '1')
     params.set('limit', '1')
     axios.get(`/api/donasi?${params}`).then((r) => {
       setTotalDikonfirmasi(r.data.totalDikonfirmasi ?? '0')
     }).catch(() => undefined)
-  }, [search, status, total, filterReligionId, filterTempatIbadahId])
+  }, [search, status, total, filterReligionId, filterTempatIbadahId, startDate, endDate, metodePembayaran])
 
   const handleDelete = useCallback(async (alasan: string) => {
     if (!deleteTarget) return
@@ -277,12 +324,22 @@ export default function DonasiPage() {
         title={isJemaah ? 'Donasi Saya' : 'Donasi'}
         subtitle={isJemaah ? 'Riwayat donasi yang Anda berikan' : 'Kelola dan konfirmasi donasi masuk'}
         action={
-          <Link
-            href="/donasi/baru"
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-dark"
-          >
-            <Plus size={16} /> {isJemaah ? 'Tambah Donasi' : 'Catat Donasi'}
-          </Link>
+          <div className="flex items-center gap-2">
+            {(isSuperAdmin || canManage) && (
+              <button
+                onClick={exportPDF}
+                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50"
+              >
+                <Download size={16} /> Export PDF
+              </button>
+            )}
+            <Link
+              href="/donasi/baru"
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-dark"
+            >
+              <Plus size={16} /> {isJemaah ? 'Tambah Donasi' : 'Catat Donasi'}
+            </Link>
+          </div>
         }
       />
 
@@ -297,30 +354,83 @@ export default function DonasiPage() {
         </div>
       </div>
 
-      <SearchFilter
-        value={search}
-        onChange={(v) => { setSearch(v); setPage(1) }}
-        placeholder="Cari nama donatur atau catatan..."
-      >
-        <select
-          value={status}
-          onChange={(e) => { setStatus(e.target.value); setPage(1) }}
-          className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-        >
-          {statusOptions.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-        </select>
-        {isSuperAdmin && (
-          <ScopeFilter
-            religionId={filterReligionId}
-            tempatIbadahId={filterTempatIbadahId}
-            onChange={({ religionId, tempatIbadahId }) => {
-              setFilterReligionId(religionId)
-              setFilterTempatIbadahId(tempatIbadahId)
-              setPage(1)
-            }}
-          />
+      <div className="space-y-3 mb-6">
+        <div className="flex items-center justify-between">
+          <SearchFilter
+            value={search}
+            onChange={(v) => { setSearch(v); setPage(1) }}
+            placeholder="Cari nama donatur atau catatan..."
+          >
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`flex items-center gap-2 px-3 py-2 text-sm border rounded-lg transition-colors ${showFilters ? 'bg-primary/10 border-primary text-primary' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+            >
+              <Filter size={16} /> Filter Lanjutan
+            </button>
+          </SearchFilter>
+        </div>
+
+        {showFilters && (
+          <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-in slide-in-from-top-2">
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Status</label>
+              <select
+                value={status}
+                onChange={(e) => { setStatus(e.target.value); setPage(1) }}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white"
+              >
+                {statusOptions.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Metode Pembayaran</label>
+              <select
+                value={metodePembayaran}
+                onChange={(e) => { setMetodePembayaran(e.target.value); setPage(1) }}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white"
+              >
+                {metodeOptions.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Dari Tanggal</label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => { setStartDate(e.target.value); setPage(1) }}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Sampai Tanggal</label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => { setEndDate(e.target.value); setPage(1) }}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white"
+              />
+            </div>
+
+            {isSuperAdmin && (
+              <div className="sm:col-span-2 lg:col-span-4 mt-2">
+                <label className="block text-xs font-medium text-gray-500 mb-1">Filter Global (Agama / Tempat Ibadah)</label>
+                <ScopeFilter
+                  religionId={filterReligionId}
+                  tempatIbadahId={filterTempatIbadahId}
+                  onChange={({ religionId, tempatIbadahId }) => {
+                    setFilterReligionId(religionId)
+                    setFilterTempatIbadahId(tempatIbadahId)
+                    setPage(1)
+                  }}
+                />
+              </div>
+            )}
+          </div>
         )}
-      </SearchFilter>
+      </div>
 
       <DataTable
         data={data}

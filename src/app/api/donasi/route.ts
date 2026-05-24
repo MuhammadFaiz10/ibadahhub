@@ -30,6 +30,10 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(50, Math.max(1, Number(searchParams.get('limit') ?? 10)))
   const status = searchParams.get('status') ?? ''
 
+  const startDate = searchParams.get('startDate')
+  const endDate = searchParams.get('endDate')
+  const metodePembayaran = searchParams.get('metodePembayaran')
+
   const where: Record<string, unknown> = {
     deletedAt: null,
   }
@@ -49,6 +53,18 @@ export async function GET(req: NextRequest) {
   }
   if (status) {
     where.status = status
+  }
+  if (metodePembayaran) {
+    where.metodePembayaran = metodePembayaran
+  }
+  if (startDate || endDate) {
+    where.tanggal = {}
+    if (startDate) (where.tanggal as any).gte = new Date(startDate)
+    if (endDate) {
+      const eDate = new Date(endDate)
+      eDate.setHours(23, 59, 59, 999)
+      (where.tanggal as any).lte = eDate
+    }
   }
   if (search) {
     where.OR = [
