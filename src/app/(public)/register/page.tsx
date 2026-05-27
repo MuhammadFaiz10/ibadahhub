@@ -45,7 +45,6 @@ export default function RegisterPage() {
   const [tempatIbadahLoading, setTempatIbadahLoading] = useState(false)
   const [registeredEmail, setRegisteredEmail] = useState<string | null>(null)
   const [resending, setResending] = useState(false)
-  const [devVerifyUrl, setDevVerifyUrl] = useState<string | null>(null)
 
   const {
     register,
@@ -84,9 +83,6 @@ export default function RegisterPage() {
         tempatIbadahId: Number(data.tempatIbadahId),
       })
       setRegisteredEmail(data.email)
-      if (res.data?.devVerifyUrl) {
-        setDevVerifyUrl(res.data.devVerifyUrl)
-      }
     } catch (err: unknown) {
       if (axios.isAxiosError(err) && err.response?.data?.error) {
         toast.error(String(err.response.data.error))
@@ -102,9 +98,6 @@ export default function RegisterPage() {
     try {
       const res = await axios.post('/api/auth/resend-verification', { email: registeredEmail })
       toast.success('Email verifikasi dikirim ulang')
-      if (res.data?.devVerifyUrl) {
-        setDevVerifyUrl(res.data.devVerifyUrl)
-      }
     } catch {
       toast.error('Gagal mengirim ulang email')
     } finally {
@@ -138,25 +131,7 @@ export default function RegisterPage() {
             </div>
           </div>
 
-          {devVerifyUrl && (
-            <div className="bg-amber-50 border border-amber-300 rounded-lg p-4 mb-5 text-left">
-              <div className="flex items-center gap-2 mb-2">
-                <Wrench size={14} className="text-amber-700" />
-                <p className="text-xs font-bold uppercase tracking-wider text-amber-700">
-                  Mode Development
-                </p>
-              </div>
-              <p className="text-xs text-amber-800 mb-2">
-                Email belum dikonfigurasi. Klik link di bawah untuk verifikasi langsung:
-              </p>
-              <a
-                href={devVerifyUrl}
-                className="inline-block px-3 py-2 bg-amber-600 text-white rounded-md text-xs font-medium hover:bg-amber-700"
-              >
-                Verifikasi Sekarang →
-              </a>
-            </div>
-          )}
+
 
           <div className="flex flex-col gap-2">
             <Link

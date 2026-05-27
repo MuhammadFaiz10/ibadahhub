@@ -110,8 +110,6 @@ export async function POST(req: NextRequest) {
     {
       message: 'Akun berhasil dibuat. Silakan cek email Anda untuk verifikasi.',
       requireVerification: true,
-      // Dev fallback: kalau email belum dikonfigurasi & sedang dev, kirim URL verifikasi langsung
-      ...(isDevMode && !emailIsConfigured ? { devVerifyUrl: verifyUrl } : {}),
     },
     { status: 201 }
   )

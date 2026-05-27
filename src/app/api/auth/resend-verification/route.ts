@@ -67,6 +67,5 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({
     success: true,
-    ...(isDevMode && !emailIsConfigured ? { devVerifyUrl: verifyUrl } : {}),
   })
 }

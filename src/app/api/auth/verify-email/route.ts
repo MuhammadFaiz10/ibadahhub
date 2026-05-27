@@ -29,7 +29,7 @@ async function handleVerify(token: string) {
       where: { id: user.id },
       data: { emailVerified: new Date() },
     }),
-    prisma.verificationToken.delete({ where: { token } }),
+    prisma.verificationToken.deleteMany({ where: { token } }),
   ])
 
   await prisma.activityLog.create({
