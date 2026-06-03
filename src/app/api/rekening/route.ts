@@ -62,7 +62,17 @@ export async function GET(req: NextRequest) {
       skip: (page - 1) * limit,
       take: limit,
       orderBy: { createdAt: 'desc' },
-      include: {
+      select: {
+        id: true,
+        namaBank: true,
+        nomorRekening: true,
+        namaPemilik: true,
+        catatan: true,
+        status: true,
+        religionId: true,
+        tempatIbadahId: true,
+        createdAt: true,
+        updatedAt: true,
         religion: { select: { nama: true } },
         tempatIbadah: { select: { nama: true, slug: true } },
       },

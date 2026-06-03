@@ -20,11 +20,30 @@ const metodeOptions = [
   { value: 'QRIS', label: 'QRIS' },
 ]
 
+function canManageKeuangan(session: { user: { role: string; subRole?: string | null } } | null) {
+  if (!session) return false
+  if (session.user.role === 'SUPERADMIN') return true
+  if (session.user.role !== 'PENGURUS') return false
+  return session.user.subRole === 'KETUA' || session.user.subRole === 'BENDAHARA'
+}
+
 export default function DonasiEditPage() {
   const router = useRouter()
   const params = useParams<{ id: string }>()
   const { data: session } = useSession()
   const isSuperAdmin = session?.user.role === 'SUPERADMIN'
+  const canManage = canManageKeuangan(session)
+
+  useEffect(() => {
+    if (session && !canManage) {
+      router.push('/donasi')
+    }
+  }, [session, canManage, router])
+
+  if (!session || !canManage) {
+    return null // or loading
+  }
+
   const {
     register,
     handleSubmit,

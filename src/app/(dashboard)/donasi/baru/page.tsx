@@ -18,11 +18,12 @@ interface RekeningInfo {
   namaBank: string
   nomorRekening: string
   namaPemilik: string
+  catatan: string | null
 }
 
 const metodeOptions = [
   { value: 'TRANSFER_BANK', label: 'Transfer Bank' },
-  { value: 'TUNAI', label: 'Tunai' },
+  { value: 'TUNAI', label: 'Tunai', forJemaah: false }, // Opsi ini tidak untuk Jemaah
   { value: 'QRIS', label: 'QRIS' },
   { value: 'MIDTRANS', label: 'Bayar Online (Midtrans)' },
 ]
@@ -48,6 +49,11 @@ export default function DonasiBaruPage() {
   const isSuperAdmin = role === 'SUPERADMIN'
   const isJemaah = role === 'JEMAAH'
   const [rekeningList, setRekeningList] = useState<RekeningInfo[]>([])
+  const [selectedRekening, setSelectedRekening] = useState<RekeningInfo | null>(null)
+
+  const filteredMetodeOptions = isJemaah
+    ? metodeOptions.filter((m) => m.forJemaah !== false)
+    : metodeOptions
 
   const {
     register,
@@ -58,7 +64,7 @@ export default function DonasiBaruPage() {
   } = useForm<DonasiCreateInput>({
     resolver: zodResolver(donasiCreateSchema),
     defaultValues: {
-      metodePembayaran: 'TRANSFER_BANK',
+      metodePembayaran: isJemaah && rekeningList.length === 0 ? 'MIDTRANS' : 'TRANSFER_BANK',
       tanggal: new Date().toISOString().slice(0, 10),
     },
   })
@@ -75,13 +81,27 @@ export default function DonasiBaruPage() {
     }
     // Tarik daftar rekening — JEMAAH juga bisa lihat rekening AKTIF di religion-nya
     axios.get('/api/rekening?limit=50').then((r) => {
-      setRekeningList(r.data.data ?? [])
+      const rekeningData = r.data.data ?? []
+      setRekeningList(rekeningData)
+      if (isJemaah && rekeningData.length === 1) {
+        setValue('rekeningId', rekeningData[0].id)
+        setSelectedRekening(rekeningData[0])
+      }
     }).catch(() => undefined)
   }, [isSuperAdmin, isJemaah, session, setValue])
 
   const metodePembayaran = watch('metodePembayaran')
-  const showRekeningSelector = metodePembayaran === 'TRANSFER_BANK' && rekeningList.length > 0
+  const rekeningId = watch('rekeningId')
   const isMidtrans = metodePembayaran === 'MIDTRANS'
+
+  useEffect(() => {
+    if (metodePembayaran === 'TRANSFER_BANK' && rekeningList.length > 0 && rekeningId) {
+      const found = rekeningList.find(r => r.id === rekeningId)
+      setSelectedRekening(found || null)
+    } else {
+      setSelectedRekening(null)
+    }
+  }, [metodePembayaran, rekeningList, rekeningId])
 
   async function onSubmit(data: DonasiCreateInput) {
     try {
@@ -123,30 +143,32 @@ export default function DonasiBaruPage() {
       />
 
       {/* Info rekening untuk JEMAAH */}
-      {isJemaah && rekeningList.length === 0 && (
+      {isJemaah && metodePembayaran === 'TRANSFER_BANK' && rekeningList.length === 0 && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 flex gap-3 items-start">
           <Info size={16} className="text-blue-500 mt-0.5 flex-shrink-0" />
           <p className="text-sm text-blue-700">
-            Hubungi pengurus untuk informasi nomor rekening donasi.
+            Tidak ada rekening donasi yang tersedia. Silakan hubungi pengurus atau pilih metode pembayaran lain.
           </p>
         </div>
       )}
 
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Nama Donatur <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              {...register('namaDonatur')}
-              disabled={isJemaah}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-gray-50 disabled:text-gray-500"
-            />
-            {errors.namaDonatur && <p className="mt-1 text-xs text-red-600">{errors.namaDonatur.message}</p>}
-            {isJemaah && <p className="mt-1 text-xs text-gray-400">Otomatis pakai nama akun Anda</p>}
-          </div>
+          {!isJemaah && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Nama Donatur <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                {...register('namaDonatur')}
+                disabled={isJemaah}
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-gray-50 disabled:text-gray-500"
+              />
+              {errors.namaDonatur && <p className="mt-1 text-xs text-red-600">{errors.namaDonatur.message}</p>}
+              {isJemaah && <p className="mt-1 text-xs text-gray-400">Otomatis pakai nama akun Anda</p>}
+            </div>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -182,33 +204,64 @@ export default function DonasiBaruPage() {
               {...register('metodePembayaran')}
               className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             >
-              {metodeOptions.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+              {filteredMetodeOptions.map((m) => (
+                <option
+                  key={m.value}
+                  value={m.value}
+                  disabled={isJemaah && m.value === 'TRANSFER_BANK' && rekeningList.length === 0}
+                >
+                  {m.label}
+                </option>
+              ))}
             </select>
           </div>
 
-          {showRekeningSelector && (
+          {metodePembayaran === 'TRANSFER_BANK' && rekeningList.length > 0 && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Rekening Tujuan
               </label>
-              <select
-                {...register('rekeningId', { valueAsNumber: true })}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                <option value="">-- Pilih Rekening (opsional) --</option>
-                {rekeningList.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.namaBank} {r.nomorRekening} a/n {r.namaPemilik}
-                  </option>
-                ))}
-              </select>
+              {rekeningList.length === 1 ? (
+                <div className="p-3 border border-gray-300 rounded-lg bg-gray-50 text-sm">
+                  <p className="font-medium">{rekeningList[0]?.namaBank} - {rekeningList[0]?.nomorRekening}</p>
+                  <p className="text-gray-600">a/n {rekeningList[0]?.namaPemilik}</p>
+                  {rekeningList[0]?.catatan && <p className="text-xs text-gray-500 mt-1">{rekeningList[0]?.catatan}</p>}
+                </div>
+              ) : (
+                <>
+                  <select
+                    {...register('rekeningId', { valueAsNumber: true })}
+                    onChange={(e) => {
+                      setValue('rekeningId', Number(e.target.value), { shouldValidate: true })
+                    }}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="">-- Pilih Rekening (opsional) --</option>
+                    {rekeningList.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.namaBank} {r.nomorRekening} a/n {r.namaPemilik}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedRekening && (() => {
+                    const currentRekening = selectedRekening;
+                    return (
+                      <div className="mt-2 p-3 border border-gray-300 rounded-lg bg-gray-50 text-sm">
+                        <p className="font-medium">{currentRekening.namaBank} - {currentRekening.nomorRekening}</p>
+                        <p className="text-gray-600">a/n {currentRekening.namaPemilik}</p>
+                        {currentRekening.catatan && <p className="text-xs text-gray-500 mt-1">{currentRekening.catatan}</p>}
+                      </div>
+                    );
+                  })()}
+                </>
+              )}
               <p className="mt-1 text-xs text-gray-400">
                 Pilih rekening yang Anda transfer untuk memudahkan verifikasi pengurus.
               </p>
             </div>
           )}
 
-          {!isMidtrans && (
+          {metodePembayaran !== 'MIDTRANS' && metodePembayaran !== 'QRIS' && (
             <>
               <FileUploadField
                 label="Bukti Pembayaran"

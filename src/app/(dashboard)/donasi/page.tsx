@@ -13,6 +13,7 @@ import { DataTable, type ColumnDef } from '@/components/shared/DataTable'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog'
 import { StatusBadge } from '@/components/shared/StatusBadge'
+import { EmptyState } from '@/components/shared/EmptyState'
 import { formatRupiah, formatTanggal } from '@/lib/utils'
 import { useDataFetch } from '@/hooks/useDataFetch'
 import jsPDF from 'jspdf'
@@ -212,22 +213,16 @@ export default function DonasiPage() {
 
   const columns: ColumnDef<Donasi>[] = [
     {
-      key: 'donatur', header: 'Donatur',
-      render: (r) => (
-        <div>
-          <p className="font-medium text-gray-900">{r.namaDonatur}</p>
-          {r.jemaah && <p className="text-xs text-gray-500">jemaah: {r.jemaah.nama}</p>}
-        </div>
-      ),
-    },
-    {
-      key: 'nominal', header: 'Nominal', className: 'text-right',
+      key: 'nominal',
+      header: 'Nominal',
+      className: 'text-right',
       render: (r) => (
         <span className="text-emerald-700 font-semibold">{formatRupiah(r.nominal)}</span>
       ),
     },
     {
-      key: 'metode', header: 'Metode',
+      key: 'metode',
+      header: 'Metode',
       render: (r) => (
         <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">
           {r.metodePembayaran === 'TRANSFER_BANK' ? 'Transfer' :
@@ -238,26 +233,42 @@ export default function DonasiPage() {
     },
     { key: 'tanggal', header: 'Tanggal', render: (r) => formatTanggal(r.tanggal) },
     {
-      key: 'status', header: 'Status',
+      key: 'status',
+      header: 'Status',
       render: (r) => <StatusBadge status={r.status} />,
     },
+    ...(isJemaah ? [] : [
+      {
+        key: 'donatur',
+        header: 'Donatur',
+        render: (r: Donasi) => (
+          <div>
+            <p className="font-medium text-gray-900">{r.namaDonatur}</p>
+            {r.jemaah && <p className="text-xs text-gray-500">jemaah: {r.jemaah.nama}</p>}
+          </div>
+        ),
+      },
+      {
+        key: 'agama',
+        header: 'Agama',
+        render: (r: Donasi) => <span className="text-gray-600 text-sm">{r.religion?.nama ?? '—'}</span>,
+      },
+      {
+        key: 'tempatIbadah',
+        header: 'Tempat Ibadah',
+        render: (r: Donasi) => (
+          <div className="text-sm">
+            <div className="text-gray-700">{r.tempatIbadah?.nama ?? '—'}</div>
+            {r.tempatIbadah?.slug && (
+              <div className="text-[11px] text-gray-400 font-mono">{r.tempatIbadah.slug}</div>
+            )}
+          </div>
+        ),
+      },
+    ]),
     {
-      key: 'agama', header: 'Agama',
-      render: (r) => <span className="text-gray-600 text-sm">{r.religion?.nama ?? '—'}</span>,
-    },
-    {
-      key: 'tempatIbadah', header: 'Tempat Ibadah',
-      render: (r) => (
-        <div className="text-sm">
-          <div className="text-gray-700">{r.tempatIbadah?.nama ?? '—'}</div>
-          {r.tempatIbadah?.slug && (
-            <div className="text-[11px] text-gray-400 font-mono">{r.tempatIbadah.slug}</div>
-          )}
-        </div>
-      ),
-    },
-    {
-      key: 'actions', header: 'Aksi',
+      key: 'actions',
+      header: 'Aksi',
       render: (r) => (
         <div className="flex items-center gap-1.5">
           {canManage && r.status === 'PENDING' && (
@@ -343,6 +354,20 @@ export default function DonasiPage() {
         }
       />
 
+      {/* Banner atau Program Donasi (Placeholder) */}
+      {isJemaah && (
+        <div className="bg-gradient-to-r from-primary to-primary-dark text-white rounded-xl p-5 mb-4 shadow-lg">
+          <h2 className="text-xl font-bold mb-2">Ayo Berdonasi untuk Kebaikan!</h2>
+          <p className="text-sm opacity-90">Dukung program-program ibadah dan sosial di komunitas Anda.</p>
+          <Link
+            href="/donasi/baru"
+            className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-primary-dark bg-white hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white"
+          >
+            Mulai Donasi Sekarang
+          </Link>
+        </div>
+      )}
+
       {/* Stat ringkas */}
       <div className="bg-white rounded-xl border border-gray-200 p-5 mb-4 flex items-center gap-4">
         <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center">
@@ -352,25 +377,37 @@ export default function DonasiPage() {
           <p className="text-xs text-gray-500">{isJemaah ? 'Total donasi terkonfirmasi Anda' : 'Total donasi terkonfirmasi'}</p>
           <p className="text-2xl font-bold text-emerald-700">{formatRupiah(totalDikonfirmasi)}</p>
         </div>
+        {isJemaah && (
+          <div className="ml-auto text-right">
+            <p className="text-xs text-gray-500">Target Donasi Masjid</p>
+            <p className="text-lg font-bold text-primary">Rp 50.000.000</p>
+            <div className="w-32 bg-gray-200 rounded-full h-2.5 mt-1">
+              <div className="bg-primary h-2.5 rounded-full" style={{ width: '70%' }}></div>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">70% Tercapai</p>
+          </div>
+        )}
       </div>
 
       <div className="space-y-3 mb-6">
-        <div className="flex items-center justify-between">
-          <SearchFilter
-            value={search}
-            onChange={(v) => { setSearch(v); setPage(1) }}
-            placeholder="Cari nama donatur atau catatan..."
-          >
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center gap-2 px-3 py-2 text-sm border rounded-lg transition-colors ${showFilters ? 'bg-primary/10 border-primary text-primary' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+        {!isJemaah && (
+          <div className="flex items-center justify-between">
+            <SearchFilter
+              value={search}
+              onChange={(v) => { setSearch(v); setPage(1) }}
+              placeholder="Cari nama donatur atau catatan..."
             >
-              <Filter size={16} /> Filter Lanjutan
-            </button>
-          </SearchFilter>
-        </div>
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className={`flex items-center gap-2 px-3 py-2 text-sm border rounded-lg transition-colors ${showFilters ? 'bg-primary/10 border-primary text-primary' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+              >
+                <Filter size={16} /> Filter Lanjutan
+              </button>
+            </SearchFilter>
+          </div>
+        )}
 
-        {showFilters && (
+        {showFilters && !isJemaah && (
           <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-in slide-in-from-top-2">
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">Status</label>
@@ -432,18 +469,70 @@ export default function DonasiPage() {
         )}
       </div>
 
-      <DataTable
-        data={data}
-        columns={columns}
-        total={total}
-        page={page}
-        limit={limit}
-        onPageChange={setPage}
-        onLimitChange={(l) => { setLimit(l); setPage(1) }}
-        isLoading={isLoading}
-        emptyTitle="Belum ada donasi"
-        emptyDescription={isJemaah ? 'Klik Tambah Donasi untuk mulai berdonasi.' : 'Belum ada donasi yang tercatat.'}
-      />
+      {isJemaah ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {data.length === 0 && !isLoading ? (
+            <div className="md:col-span-2">
+              <EmptyState
+                title="Belum ada donasi"
+                description="Klik Tambah Donasi untuk mulai berdonasi."
+              />
+            </div>
+          ) : (
+            data.map((d) => (
+              <div key={d.id} className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    {d.metodePembayaran === 'TRANSFER_BANK' && <CreditCard size={18} className="text-gray-500" />}
+                    {d.metodePembayaran === 'TUNAI' && <HandCoins size={18} className="text-gray-500" />}
+                    {d.metodePembayaran === 'QRIS' && <CreditCard size={18} className="text-gray-500" />}
+                    {d.metodePembayaran === 'MIDTRANS' && <CreditCard size={18} className="text-gray-500" />}
+                    <p className="font-medium text-gray-800">Donasi {d.metodePembayaran === 'TRANSFER_BANK' ? 'Transfer' : d.metodePembayaran === 'TUNAI' ? 'Tunai' : d.metodePembayaran === 'MIDTRANS' ? 'Online' : 'QRIS'}</p>
+                  </div>
+                  <StatusBadge status={d.status} />
+                </div>
+                <p className="text-2xl font-bold text-emerald-700 mb-1">{formatRupiah(d.nominal)}</p>
+                <p className="text-sm text-gray-500">Tanggal: {formatTanggal(d.tanggal)}</p>
+                {d.catatan && <p className="text-sm text-gray-500 mt-1">Catatan: {d.catatan}</p>}
+                <div className="flex justify-end mt-4">
+                  {!canManage && (
+                    <>
+                      {d.metodePembayaran === 'MIDTRANS' && d.status === 'PENDING' && (
+                        <button
+                          onClick={() => handleBayar(d.id)}
+                          disabled={payingId === d.id}
+                          className="flex items-center gap-1 px-2.5 py-1.5 text-xs bg-primary text-white rounded-lg hover:bg-primary-dark disabled:opacity-60"
+                        >
+                          <CreditCard size={11} />
+                          {payingId === d.id ? 'Memuat...' : 'Bayar'}
+                        </button>
+                      )}
+                      {d.buktiPembayaran && (
+                        <a href={d.buktiPembayaran} target="_blank" rel="noopener" className="text-xs text-primary hover:underline ml-2">
+                          Bukti Pembayaran
+                        </a>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      ) : (
+        <DataTable
+          data={data}
+          columns={columns}
+          total={total}
+          page={page}
+          limit={limit}
+          onPageChange={setPage}
+          onLimitChange={(l) => { setLimit(l); setPage(1) }}
+          isLoading={isLoading}
+          emptyTitle="Belum ada donasi"
+          emptyDescription={isJemaah ? 'Klik Tambah Donasi untuk mulai berdonasi.' : 'Belum ada donasi yang tercatat.'}
+        />
+      )}
 
       <ConfirmDialog
         open={!!deleteTarget}

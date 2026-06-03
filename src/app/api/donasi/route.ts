@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { donasiCreateSchema } from '@/lib/validations/donasi'
+import { endOfDay } from 'date-fns'
 
 function canManageKeuangan(session: { user: { role: string; subRole?: string | null } } | null) {
   if (!session) return false
@@ -61,9 +62,7 @@ export async function GET(req: NextRequest) {
     where.tanggal = {}
     if (startDate) (where.tanggal as any).gte = new Date(startDate)
     if (endDate) {
-      const eDate = new Date(endDate)
-      eDate.setHours(23, 59, 59, 999)
-      (where.tanggal as any).lte = eDate
+      (where.tanggal as any).lte = endOfDay(new Date(endDate))
     }
   }
   if (search) {
