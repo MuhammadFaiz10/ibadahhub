@@ -26,14 +26,13 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ error: 'ID tidak valid' }, { status: 400 })
   }
 
-  const jemaah = await prisma.jemaah.findUnique({
-    where: { id, deletedAt: null },
+  const jemaah = await prisma.user.findUnique({
+    where: { id, role: 'JEMAAH', deletedAt: null },
     select: {
       id: true,
       nama: true,
-      userId: true,
+      email: true,
       religionId: true,
-      user: { select: { email: true } },
     },
   })
   if (!jemaah) return NextResponse.json({ error: 'Jemaah tidak ditemukan' }, { status: 404 })
@@ -42,9 +41,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  if (!jemaah.userId) {
+  if (!jemaah.email) {
     return NextResponse.json(
-      { error: 'Jemaah ini belum punya akun login, tidak bisa reset password' },
+      { error: 'Jemaah ini belum memiliki email untuk login, tidak bisa reset password' },
       { status: 400 }
     )
   }
@@ -53,12 +52,12 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const hashedPassword = await bcrypt.hash(generatedPassword, 12)
 
   await prisma.user.update({
-    where: { id: jemaah.userId },
+    where: { id: jemaah.id },
     data: { password: hashedPassword },
   })
 
   await createNotifikasi(
-    jemaah.userId,
+    jemaah.id,
     'Password Anda Direset',
     'Password akun Anda baru saja direset oleh administrator. Silakan minta password baru ke pengurus.',
     '/profil'
@@ -69,23 +68,21 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       userId: Number(session.user.id),
       aksi: 'UPDATE',
       model: 'User',
-      recordId: jemaah.userId,
+      recordId: jemaah.id,
       detail: `Reset password jemaah: ${jemaah.nama}`,
     },
   })
 
-  if (jemaah.user?.email) {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL?.trim() || 'http://localhost:3000'
-    await sendEmail({
-      to: jemaah.user.email,
-      subject: 'Password Anda Direset — IbadahHub',
-      html: adminPasswordResetEmail({
-        nama: jemaah.nama,
-        password: generatedPassword,
-        loginUrl: `${baseUrl}/login`,
-      }),
-    })
-  }
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL?.trim() || 'http://localhost:3000'
+  await sendEmail({
+    to: jemaah.email,
+    subject: 'Password Anda Direset — IbadahHub',
+    html: adminPasswordResetEmail({
+      nama: jemaah.nama,
+      password: generatedPassword,
+      loginUrl: `${baseUrl}/login`,
+    }),
+  })
 
   return NextResponse.json({ generatedPassword, nama: jemaah.nama })
 }

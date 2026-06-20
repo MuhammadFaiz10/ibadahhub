@@ -34,6 +34,7 @@ export async function GET(req: NextRequest) {
     : (session.user.tempatIbadahId ?? undefined)
 
   const where = {
+    role: 'JEMAAH' as const,
     deletedAt: showArsip ? ({ not: null } as const) : null,
     ...(religionId !== undefined ? { religionId } : {}),
     ...(tempatIbadahId !== undefined ? { tempatIbadahId } : {}),
@@ -49,7 +50,7 @@ export async function GET(req: NextRequest) {
   }
 
   const [data, total] = await Promise.all([
-    prisma.jemaah.findMany({
+    prisma.user.findMany({
       where,
       skip: (page - 1) * limit,
       take: limit,
@@ -63,14 +64,13 @@ export async function GET(req: NextRequest) {
         status: true,
         religionId: true,
         tempatIbadahId: true,
-        userId: true,
         createdAt: true,
         deletedAt: true,
         religion: { select: { nama: true } },
         tempatIbadah: { select: { nama: true, slug: true } },
       },
     }),
-    prisma.jemaah.count({ where }),
+    prisma.user.count({ where }),
   ])
 
   return NextResponse.json({ data, total, page, limit })
@@ -123,7 +123,7 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const jemaah = await prisma.jemaah.create({
+  const jemaah = await prisma.user.create({
     data: {
       nama: parsed.data.nama,
       email: parsed.data.email || null,
@@ -132,6 +132,7 @@ export async function POST(req: NextRequest) {
       religionId: safeReligionId,
       tempatIbadahId: safeTempatIbadahId,
       status: true,
+      role: 'JEMAAH',
     },
   })
 
@@ -139,7 +140,7 @@ export async function POST(req: NextRequest) {
     data: {
       userId: Number(session.user.id),
       aksi: 'CREATE',
-      model: 'Jemaah',
+      model: 'User',
       recordId: jemaah.id,
       detail: `Menambah jemaah: ${jemaah.nama} - ${religion.nama}`,
     },

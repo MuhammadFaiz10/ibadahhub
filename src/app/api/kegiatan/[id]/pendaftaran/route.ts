@@ -54,7 +54,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
           nama: true,
           email: true,
           role: true,
-          jemaahProfile: { select: { noHp: true } },
+          noHp: true,
         },
       },
     },

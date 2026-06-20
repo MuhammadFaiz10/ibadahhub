@@ -167,6 +167,17 @@ export default function KegiatanPage() {
       ),
     },
   ]
+  const allowed = isSuperAdmin || isJemaah || canManage
+  if (session && !allowed) {
+    return (
+      <div>
+        <PageHeader title="Kegiatan" />
+        <div className="bg-red-50 border border-red-200 rounded-xl p-5 text-red-700 text-sm mt-4">
+          Akses ditolak. Halaman ini hanya untuk Jemaah, Ketua, Sekretaris, atau Superadmin.
+        </div>
+      </div>
+    )
+  }
 
   // JEMAAH lihat dalam tampilan kalender
   if (isJemaah) {

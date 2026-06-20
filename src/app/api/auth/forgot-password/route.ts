@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
 
   // Kirim email — kalau gagal, tetap return sukses ke user (token sudah ke DB, dan log akan kasih tahu kita)
   await sendEmail({
-    to: user.email,
+    to: user.email!,
     subject: 'Reset Password — IbadahHub',
     html: forgotPasswordEmail({ nama: user.nama, resetUrl }),
   })

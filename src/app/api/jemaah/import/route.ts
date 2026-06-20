@@ -178,9 +178,10 @@ export async function POST(req: NextRequest) {
     }
 
     // Cek apakah jemaah dengan nama+religion sudah ada (dedupe sederhana)
-    const exists = await prisma.jemaah.findFirst({
+    const exists = await prisma.user.findFirst({
       where: {
         nama,
+        role: 'JEMAAH',
         religionId: resolvedReligionId,
         deletedAt: null,
       },
@@ -192,7 +193,7 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-      await prisma.jemaah.create({
+      await prisma.user.create({
         data: {
           nama,
           email: email || null,
@@ -201,6 +202,7 @@ export async function POST(req: NextRequest) {
           religionId: resolvedReligionId,
           tempatIbadahId: resolvedTempatIbadahId,
           status: true,
+          role: 'JEMAAH',
         },
       })
       result.imported++
@@ -218,7 +220,7 @@ export async function POST(req: NextRequest) {
     data: {
       userId,
       aksi: 'CREATE',
-      model: 'Jemaah',
+      model: 'User',
       detail: `Import jemaah: ${result.imported} berhasil, ${result.skipped} dilewati, dari ${result.total} baris`,
     },
   })

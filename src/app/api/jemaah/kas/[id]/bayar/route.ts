@@ -16,22 +16,14 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       return NextResponse.json({ error: 'Metode pembayaran wajib diisi' }, { status: 400 })
     }
 
-    const tagihanJemaahId = Number(params.id)
-    
-    // Validate ownership
-    const jemaah = await prisma.jemaah.findUnique({
-      where: { userId: Number(session.user.id) }
+    const userId = Number(session.user.id)
+    const tagihanId = Number(params.id)
+
+    const existingTagihan = await prisma.tagihanKas.findUnique({
+      where: { id: tagihanId }
     })
 
-    if (!jemaah) {
-      return NextResponse.json({ error: 'Profil jemaah tidak ditemukan' }, { status: 404 })
-    }
-
-    const existingTagihan = await prisma.tagihanKasJemaah.findUnique({
-      where: { id: tagihanJemaahId }
-    })
-
-    if (!existingTagihan || existingTagihan.jemaahId !== jemaah.id) {
+    if (!existingTagihan || existingTagihan.userId !== userId) {
       return NextResponse.json({ error: 'Tagihan tidak ditemukan' }, { status: 404 })
     }
 
@@ -40,8 +32,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     }
 
     // Update status to MENUNGGU_KONFIRMASI
-    const updatedTagihan = await prisma.tagihanKasJemaah.update({
-      where: { id: tagihanJemaahId },
+    const updatedTagihan = await prisma.tagihanKas.update({
+      where: { id: tagihanId },
       data: {
         status: 'MENUNGGU_KONFIRMASI',
         metodePembayaran: metodePembayaran as MetodePembayaran,

@@ -23,8 +23,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     return NextResponse.json({ error: 'ID tidak valid' }, { status: 400 })
   }
 
-  const jemaah = await prisma.jemaah.findUnique({
-    where: { id, deletedAt: null },
+  const jemaah = await prisma.user.findFirst({
+    where: { id, role: 'JEMAAH', deletedAt: null },
     select: {
       id: true,
       nama: true,
@@ -34,7 +34,6 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       status: true,
       religionId: true,
       tempatIbadahId: true,
-      userId: true,
       createdAt: true,
       religion: { select: { id: true, nama: true } },
       tempatIbadah: { select: { id: true, nama: true, slug: true } },
@@ -62,7 +61,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     return NextResponse.json({ error: 'ID tidak valid' }, { status: 400 })
   }
 
-  const jemaah = await prisma.jemaah.findUnique({ where: { id, deletedAt: null } })
+  const jemaah = await prisma.user.findFirst({ where: { id, role: 'JEMAAH', deletedAt: null } })
   if (!jemaah) return NextResponse.json({ error: 'Jemaah tidak ditemukan' }, { status: 404 })
 
   if (session.user.role === 'PENGURUS' && jemaah.tempatIbadahId !== session.user.tempatIbadahId) {
@@ -121,7 +120,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   if (updateData.noHp === '') updateData.noHp = null
   if (updateData.alamat === '') updateData.alamat = null
 
-  const updated = await prisma.jemaah.update({
+  const updated = await prisma.user.update({
     where: { id },
     data: updateData,
   })
@@ -130,7 +129,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     data: {
       userId: Number(session.user.id),
       aksi: 'UPDATE',
-      model: 'Jemaah',
+      model: 'User',
       recordId: id,
       detail: `Memperbarui jemaah: ${updated.nama}`,
     },
@@ -152,7 +151,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     return NextResponse.json({ error: 'ID tidak valid' }, { status: 400 })
   }
 
-  const jemaah = await prisma.jemaah.findUnique({ where: { id, deletedAt: null } })
+  const jemaah = await prisma.user.findFirst({ where: { id, role: 'JEMAAH', deletedAt: null } })
   if (!jemaah) return NextResponse.json({ error: 'Jemaah tidak ditemukan' }, { status: 404 })
 
   if (session.user.role === 'PENGURUS' && jemaah.tempatIbadahId !== session.user.tempatIbadahId) {
@@ -164,7 +163,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     return NextResponse.json({ error: 'Alasan penghapusan wajib diisi' }, { status: 400 })
   }
 
-  await prisma.jemaah.update({
+  await prisma.user.update({
     where: { id },
     data: { deletedAt: new Date(), status: false },
   })
@@ -173,7 +172,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     data: {
       userId: Number(session.user.id),
       aksi: 'DELETE',
-      model: 'Jemaah',
+      model: 'User',
       recordId: id,
       detail: alasan,
     },
@@ -195,7 +194,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     return NextResponse.json({ error: 'ID tidak valid' }, { status: 400 })
   }
 
-  const jemaah = await prisma.jemaah.findUnique({ where: { id } })
+  const jemaah = await prisma.user.findFirst({ where: { id, role: 'JEMAAH' } })
   if (!jemaah) return NextResponse.json({ error: 'Jemaah tidak ditemukan' }, { status: 404 })
   if (!jemaah.deletedAt) {
     return NextResponse.json({ error: 'Jemaah tidak dalam kondisi dihapus' }, { status: 400 })
@@ -205,7 +204,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  await prisma.jemaah.update({
+  await prisma.user.update({
     where: { id },
     data: { deletedAt: null, status: true },
   })
@@ -214,7 +213,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     data: {
       userId: Number(session.user.id),
       aksi: 'RESTORE',
-      model: 'Jemaah',
+      model: 'User',
       recordId: id,
       detail: `Memulihkan jemaah: ${jemaah.nama}`,
     },

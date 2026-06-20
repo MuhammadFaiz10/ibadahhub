@@ -1,114 +1,115 @@
-// IbadahHub - Entity Relationship Diagram
-// Source: Prisma migrations (PostgreSQL)
-// Format: DBML — paste ke https://dbdiagram.io
-//
-// Multi-tenant model:
-//   Religion (1) ──< TempatIbadah (1) ──< User / Jemaah / Kegiatan / Pengumuman /
-//                                          Donasi / Pengeluaran / Rekening
-//
-// Semua resource operasional terikat ke `tempatIbadahId` (NOT NULL kecuali User).
-// `religionId` di tabel anak di-denormalisasi (redundan tapi konsisten) untuk
-// performa query — selalu sama dengan `TempatIbadah.religionId` rekord induknya.
+// DBML (Database Markup Language) for IbadahHub
+// Copy and paste this code into https://dbdiagram.io to generate the ERD
 
-//// ------------------------------------------
-//// ENUMS
-//// ------------------------------------------
+// ─── ENUMS ───────────────────────────────────────────────
 
-Enum Role {
+enum Role {
   SUPERADMIN
   PENGURUS
   JEMAAH
 }
 
-Enum SubRole {
+enum SubRole {
   KETUA
   BENDAHARA
   SEKRETARIS
 }
 
-Enum StatusKegiatan {
+enum StatusKegiatan {
   UPCOMING
   ONGOING
   SELESAI
   DIBATALKAN
 }
 
-Enum StatusDonasi {
+enum StatusDonasi {
   PENDING
   DIKONFIRMASI
   DITOLAK
 }
 
-Enum MetodePembayaran {
+enum MetodePembayaran {
   TRANSFER_BANK
   TUNAI
   QRIS
   MIDTRANS
 }
 
-Enum StatusPengumuman {
+enum StatusPengumuman {
   DRAFT
   AKTIF
   KADALUARSA
 }
 
-Enum KategoriPengeluaran {
+enum KategoriPengeluaran {
   OPERASIONAL
   KEGIATAN
   SOSIAL
   LAINNYA
 }
 
-Enum StatusRekening {
+enum KategoriPemasukan {
+  DONASI
+  HIBAH
+  USAHA
+  LAINNYA
+}
+
+enum StatusRekening {
   AKTIF
   NONAKTIF
 }
 
-Enum StatusPendaftaran {
+enum StatusTempatIbadah {
+  AKTIF
+  NONAKTIF
+}
+
+enum StatusPendaftaran {
   TERDAFTAR
   HADIR
   TIDAK_HADIR
   BATAL
 }
 
-Enum StatusTempatIbadah {
-  AKTIF
-  NONAKTIF
+enum StatusTagihanKas {
+  BELUM_DIBAYAR
+  MENUNGGU_KONFIRMASI
+  LUNAS
+  DIBATALKAN
 }
 
-//// ------------------------------------------
-//// TABLES
-//// ------------------------------------------
+// ─── TABLES ──────────────────────────────────────────────
 
 Table Religion {
-  id          int         [pk, increment]
-  nama        text        [unique, not null]
-  deskripsi   text        [null]
-  createdAt   timestamp   [not null, default: `now()`]
-  updatedAt   timestamp   [not null]
-  deletedAt   timestamp   [null, note: 'soft delete']
+  id int [pk, increment]
+  nama varchar [unique, not null]
+  deskripsi text
+  createdAt timestamp [default: `now()`, not null]
+  updatedAt timestamp [not null]
+  deletedAt timestamp
 }
 
 Table TempatIbadah {
-  id          int                [pk, increment]
-  religionId  int                [not null, ref: > Religion.id]
-  nama        text               [not null]
-  slug        text               [unique, not null, note: 'URL-friendly, contoh: masjid-al-hikmah']
-  alamat      text               [null]
-  kota        text               [null]
-  provinsi    text               [null]
-  kodePos     text               [null]
-  noTelp      text               [null]
-  email       text               [null]
-  logo        text               [null, note: 'URL logo']
-  deskripsi   text               [null]
-  latitude    decimal(10,7)      [null]
-  longitude   decimal(10,7)      [null]
-  status      StatusTempatIbadah [not null, default: 'AKTIF']
-  createdBy   int                [null, note: 'User ID SUPERADMIN yang membuat, no DB-level FK']
-  createdAt   timestamp          [not null, default: `now()`]
-  updatedAt   timestamp          [not null]
-  deletedAt   timestamp          [null, note: 'soft delete (arsip)']
+  id int [pk, increment]
+  religionId int [not null]
+  nama varchar [not null]
+  slug varchar [unique, not null]
+  alamat text
+  kota varchar
+  provinsi varchar
+  kodePos varchar
+  noTelp varchar
+  email varchar
+  logo varchar
+  deskripsi text
+  latitude decimal(10,7)
+  longitude decimal(10,7)
+  status StatusTempatIbadah [default: 'AKTIF', not null]
+  createdBy int
+  createdAt timestamp [default: `now()`, not null]
+  updatedAt timestamp [not null]
+  deletedAt timestamp
 
   indexes {
     religionId
@@ -116,75 +117,62 @@ Table TempatIbadah {
 }
 
 Table User {
-  id             int       [pk, increment]
-  nama           text      [not null]
-  email          text      [unique, not null]
-  password       text      [not null]
-  role           Role      [not null]
-  subRole        SubRole   [null]
-  religionId     int       [null, ref: > Religion.id]
-  tempatIbadahId int       [null, ref: > TempatIbadah.id, note: 'NULL untuk SUPERADMIN; required untuk PENGURUS/JEMAAH']
-  fotoProfil     text      [null]
-  status         boolean   [not null, default: true]
-  emailVerified  timestamp [null]
-  createdAt      timestamp [not null, default: `now()`]
-  updatedAt      timestamp [not null]
-  deletedAt      timestamp [null, note: 'soft delete']
+  id int [pk, increment]
+  nama varchar [not null]
+  email varchar [unique]
+  password varchar
+  role Role [not null]
+  subRole SubRole
+  religionId int
+  tempatIbadahId int
+  fotoProfil varchar
+  noHp varchar
+  alamat text
+  loginAttempts int [default: 0, not null]
+  lockoutUntil timestamp
+  status boolean [default: true, not null]
+  emailVerified timestamp
+  createdAt timestamp [default: `now()`, not null]
+  updatedAt timestamp [not null]
+  deletedAt timestamp
 }
 
 Table Session {
-  id           text      [pk, note: 'CUID']
-  sessionToken text      [unique, not null]
-  userId       int       [not null, ref: > User.id]
-  expires      timestamp [not null]
+  id varchar [pk]
+  sessionToken varchar [unique, not null]
+  userId int [not null]
+  expires timestamp [not null]
 }
 
 Table VerificationToken {
-  identifier text      [not null]
-  token      text      [unique, not null]
-  expires    timestamp [not null]
+  identifier varchar [not null]
+  token varchar [unique, not null]
+  expires timestamp [not null]
 
   indexes {
     (identifier, token) [unique]
   }
 }
 
-Table Jemaah {
-  id             int       [pk, increment]
-  userId         int       [unique, null, ref: > User.id]
-  religionId     int       [not null, ref: > Religion.id]
-  tempatIbadahId int       [not null, ref: > TempatIbadah.id]
-  nama           text      [not null]
-  email          text      [null]
-  noHp           text      [null]
-  alamat         text      [null]
-  status         boolean   [not null, default: true]
-  createdAt      timestamp [not null, default: `now()`]
-  updatedAt      timestamp [not null]
-  deletedAt      timestamp [null, note: 'soft delete']
-
-  indexes {
-    tempatIbadahId
-  }
-}
 
 Table Kegiatan {
-  id             int            [pk, increment]
-  religionId     int            [not null, ref: > Religion.id]
-  tempatIbadahId int            [not null, ref: > TempatIbadah.id]
-  namaKegiatan   text           [not null]
-  tanggal       timestamp      [not null]
-  waktuMulai    text           [not null]
-  waktuSelesai  text           [null]
-  lokasi        text           [not null]
-  deskripsi     text           [null]
-  kapasitas     int            [null]
-  status        StatusKegiatan [not null, default: 'UPCOMING']
-  createdBy     int            [not null, note: 'User ID, no DB-level FK constraint']
-  createdAt     timestamp      [not null, default: `now()`]
-  updatedAt     timestamp      [not null]
-  deletedAt     timestamp      [null, note: 'soft delete']
-  deletedReason text           [null]
+  id int [pk, increment]
+  religionId int [not null]
+  tempatIbadahId int [not null]
+  namaKegiatan varchar [not null]
+  tanggal timestamp [not null]
+  waktuMulai varchar [not null]
+  waktuSelesai varchar
+  lokasi varchar [not null]
+  pemimpin varchar
+  deskripsi text
+  kapasitas int
+  status StatusKegiatan [default: 'UPCOMING', not null]
+  createdBy int [not null]
+  createdAt timestamp [default: `now()`, not null]
+  updatedAt timestamp [not null]
+  deletedAt timestamp
+  deletedReason text
 
   indexes {
     tempatIbadahId
@@ -192,13 +180,13 @@ Table Kegiatan {
 }
 
 Table KegiatanPendaftaran {
-  id         int               [pk, increment]
-  kegiatanId int               [not null, ref: > Kegiatan.id]
-  userId     int               [not null, ref: > User.id]
-  status     StatusPendaftaran [not null, default: 'TERDAFTAR']
-  catatan    text              [null]
-  createdAt  timestamp         [not null, default: `now()`]
-  updatedAt  timestamp         [not null]
+  id int [pk, increment]
+  kegiatanId int [not null]
+  userId int [not null]
+  status StatusPendaftaran [default: 'TERDAFTAR', not null]
+  catatan text
+  createdAt timestamp [default: `now()`, not null]
+  updatedAt timestamp [not null]
 
   indexes {
     (kegiatanId, userId) [unique]
@@ -206,19 +194,19 @@ Table KegiatanPendaftaran {
 }
 
 Table Pengumuman {
-  id             int              [pk, increment]
-  religionId     int              [not null, ref: > Religion.id]
-  tempatIbadahId int              [not null, ref: > TempatIbadah.id]
-  judul          text             [not null]
-  isi            text             [not null, note: 'TEXT (full text)']
-  tanggalPublish timestamp        [not null, default: `now()`]
-  expireDate     timestamp        [null]
-  status         StatusPengumuman [not null, default: 'DRAFT']
-  createdBy      int              [not null, note: 'User ID, no DB-level FK constraint']
-  createdAt      timestamp        [not null, default: `now()`]
-  updatedAt      timestamp        [not null]
-  deletedAt      timestamp        [null, note: 'soft delete']
-  deletedReason  text             [null]
+  id int [pk, increment]
+  religionId int [not null]
+  tempatIbadahId int [not null]
+  judul varchar [not null]
+  isi text [not null]
+  tanggalPublish timestamp [default: `now()`, not null]
+  expireDate timestamp
+  status StatusPengumuman [default: 'DRAFT', not null]
+  createdBy int [not null]
+  createdAt timestamp [default: `now()`, not null]
+  updatedAt timestamp [not null]
+  deletedAt timestamp
+  deletedReason text
 
   indexes {
     tempatIbadahId
@@ -226,40 +214,39 @@ Table Pengumuman {
 }
 
 Table PengumumanLampiran {
-  id           int       [pk, increment]
-  pengumumanId int       [not null, ref: > Pengumuman.id]
-  namaFile     text      [not null]
-  url          text      [not null]
-  ukuran       int       [not null, note: 'File size in bytes']
-  createdAt    timestamp [not null, default: `now()`]
+  id int [pk, increment]
+  pengumumanId int [not null]
+  namaFile varchar [not null]
+  url varchar [not null]
+  ukuran int [not null]
+  createdAt timestamp [default: `now()`, not null]
 }
 
 Table Donasi {
-  id               int              [pk, increment]
-  religionId       int              [not null, ref: > Religion.id]
-  tempatIbadahId   int              [not null, ref: > TempatIbadah.id]
-  userId           int              [null, ref: > User.id]
-  jemaahId         int              [null, ref: > Jemaah.id]
-  rekeningId       int              [null, ref: > Rekening.id]
-  namaDonatur      text             [not null]
-  nominal          decimal(15,2)    [not null]
-  tanggal          timestamp        [not null]
+  id int [pk, increment]
+  religionId int [not null]
+  tempatIbadahId int [not null]
+  userId int
+  rekeningId int
+  namaDonatur varchar [not null]
+  nominal decimal(15,2) [not null]
+  tanggal timestamp [not null]
   metodePembayaran MetodePembayaran [not null]
-  status           StatusDonasi     [not null, default: 'PENDING']
-  catatan          text             [null]
-  buktiPembayaran  text             [null]
-  dikonfirmasiOleh int              [null, ref: > User.id]
-  dikonfirmasiAt   timestamp        [null]
-  midtransOrderId  text             [unique, null]
-  midtransToken    text             [null]
-  midtransPaymentUrl text           [null]
-  midtransStatus   text             [null]
-  midtransTransactionId text        [null]
-  paymentChannel   text             [null, note: 'mis. "GoPay", "BCA Virtual Account", "manual_paid"']
-  createdAt        timestamp        [not null, default: `now()`]
-  updatedAt        timestamp        [not null]
-  deletedAt        timestamp        [null, note: 'soft delete']
-  deletedReason    text             [null]
+  status StatusDonasi [default: 'PENDING', not null]
+  catatan text
+  buktiPembayaran varchar
+  dikonfirmasiOleh int
+  dikonfirmasiAt timestamp
+  midtransOrderId varchar [unique]
+  midtransToken varchar
+  midtransPaymentUrl varchar
+  midtransStatus varchar
+  midtransTransactionId varchar
+  paymentChannel varchar
+  createdAt timestamp [default: `now()`, not null]
+  updatedAt timestamp [not null]
+  deletedAt timestamp
+  deletedReason text
 
   indexes {
     tempatIbadahId
@@ -267,19 +254,41 @@ Table Donasi {
 }
 
 Table Pengeluaran {
-  id             int                 [pk, increment]
-  religionId     int                 [not null, ref: > Religion.id]
-  tempatIbadahId int                 [not null, ref: > TempatIbadah.id]
-  keterangan     text                [not null]
-  nominal       decimal(15,2)       [not null]
-  tanggal       timestamp           [not null]
-  kategori      KategoriPengeluaran [not null]
-  bukti         text                [null]
-  createdBy     int                 [not null, ref: > User.id]
-  createdAt     timestamp           [not null, default: `now()`]
-  updatedAt     timestamp           [not null]
-  deletedAt     timestamp           [null, note: 'soft delete']
-  deletedReason text                [null]
+  id int [pk, increment]
+  religionId int [not null]
+  tempatIbadahId int [not null]
+  keterangan varchar [not null]
+  nominal decimal(15,2) [not null]
+  tanggal timestamp [not null]
+  kategori KategoriPengeluaran [not null]
+  bukti varchar
+  rekeningId int
+  createdBy int [not null]
+  createdAt timestamp [default: `now()`, not null]
+  updatedAt timestamp [not null]
+  deletedAt timestamp
+  deletedReason text
+
+  indexes {
+    tempatIbadahId
+  }
+}
+
+Table Pemasukan {
+  id int [pk, increment]
+  religionId int [not null]
+  tempatIbadahId int [not null]
+  keterangan varchar [not null]
+  nominal decimal(15,2) [not null]
+  tanggal timestamp [not null]
+  kategori KategoriPemasukan [not null]
+  bukti varchar
+  rekeningId int
+  createdBy int [not null]
+  createdAt timestamp [default: `now()`, not null]
+  updatedAt timestamp [not null]
+  deletedAt timestamp
+  deletedReason text
 
   indexes {
     tempatIbadahId
@@ -287,16 +296,17 @@ Table Pengeluaran {
 }
 
 Table Rekening {
-  id             int            [pk, increment]
-  religionId     int            [not null, ref: > Religion.id]
-  tempatIbadahId int            [not null, ref: > TempatIbadah.id]
-  namaBank       text           [not null]
-  nomorRekening  text           [not null]
-  namaPemilik    text           [not null]
-  catatan        text           [null]
-  status         StatusRekening [not null, default: 'AKTIF']
-  createdAt      timestamp      [not null, default: `now()`]
-  updatedAt      timestamp      [not null]
+  id int [pk, increment]
+  religionId int [not null]
+  tempatIbadahId int [not null]
+  namaBank varchar [not null]
+  nomorRekening varchar [not null]
+  namaPemilik varchar [not null]
+  catatan text
+  status StatusRekening [default: 'AKTIF', not null]
+  createdAt timestamp [default: `now()`, not null]
+  updatedAt timestamp [not null]
+  deletedAt timestamp
 
   indexes {
     tempatIbadahId
@@ -304,28 +314,143 @@ Table Rekening {
 }
 
 Table Notifikasi {
-  id        int       [pk, increment]
-  userId    int       [not null, ref: > User.id]
-  judul     text      [not null]
-  isi       text      [not null]
-  urlTujuan text      [null]
-  dibaca    boolean   [not null, default: false]
-  createdAt timestamp [not null, default: `now()`]
+  id int [pk, increment]
+  userId int [not null]
+  judul varchar [not null]
+  isi text [not null]
+  urlTujuan varchar
+  dibaca boolean [default: false, not null]
+  createdAt timestamp [default: `now()`, not null]
 }
 
 Table ActivityLog {
-  id        int       [pk, increment]
-  userId    int       [not null, ref: > User.id]
-  aksi      text      [not null]
-  model     text      [not null]
-  recordId  int       [null]
-  detail    text      [null, note: 'TEXT (full text)']
-  createdAt timestamp [not null, default: `now()`]
+  id int [pk, increment]
+  userId int [not null]
+  aksi varchar [not null]
+  model varchar [not null]
+  recordId int
+  detail text
+  ipAddress varchar
+  userAgent varchar
+  createdAt timestamp [default: `now()`, not null]
 }
 
-//// ------------------------------------------
-//// REFS TAMBAHAN (logical, no DB FK constraint)
-//// ------------------------------------------
+Table TagihanKas {
+  id int [pk, increment]
+  religionId int [not null]
+  tempatIbadahId int [not null]
+  userId int [not null]
+  nama varchar [not null]
+  deskripsi text
+  nominal decimal(15,2) [not null]
+  jatuhTempo timestamp
+  status StatusTagihanKas [default: 'BELUM_DIBAYAR', not null]
+  buktiPembayaran varchar
+  metodePembayaran MetodePembayaran
+  pemasukanId int
+  tanggalBayar timestamp
+  dikonfirmasiOleh int
+  createdBy int [not null]
+  createdAt timestamp [default: `now()`, not null]
+  updatedAt timestamp [not null]
+  deletedAt timestamp
 
-Ref: Kegiatan.createdBy > User.id
-Ref: Pengumuman.createdBy > User.id
+  indexes {
+    tempatIbadahId
+  }
+}
+
+Table JadwalIbadah {
+  id int [pk, increment]
+  religionId int [not null]
+  tempatIbadahId int [not null]
+  namaIbadah varchar [not null]
+  tanggal timestamp [not null]
+  waktuMulai varchar [not null]
+  waktuSelesai varchar
+  pemimpin varchar
+  pendamping varchar
+  lokasi varchar
+  catatan text
+  createdBy int [not null]
+  createdAt timestamp [default: `now()`, not null]
+  updatedAt timestamp [not null]
+  deletedAt timestamp
+
+  indexes {
+    tempatIbadahId
+    tanggal
+  }
+}
+
+// ─── RELATIONSHIPS ───────────────────────────────────────
+
+Ref: TempatIbadah.religionId > Religion.id
+Ref: User.religionId > Religion.id
+Ref: User.tempatIbadahId > TempatIbadah.id
+Ref: Session.userId > User.id [delete: cascade]
+
+Ref: Kegiatan.religionId > Religion.id
+Ref: Kegiatan.tempatIbadahId > TempatIbadah.id
+Ref: KegiatanPendaftaran.kegiatanId > Kegiatan.id [delete: cascade]
+Ref: KegiatanPendaftaran.userId > User.id
+Ref: Pengumuman.religionId > Religion.id
+Ref: Pengumuman.tempatIbadahId > TempatIbadah.id
+Ref: PengumumanLampiran.pengumumanId > Pengumuman.id [delete: cascade]
+Ref: Donasi.religionId > Religion.id
+Ref: Donasi.tempatIbadahId > TempatIbadah.id
+Ref: Donasi.userId > User.id
+Ref: Donasi.rekeningId > Rekening.id
+Ref: Donasi.dikonfirmasiOleh > User.id
+Ref: Pengeluaran.religionId > Religion.id
+Ref: Pengeluaran.tempatIbadahId > TempatIbadah.id
+Ref: Pengeluaran.createdBy > User.id
+Ref: Pengeluaran.rekeningId > Rekening.id
+Ref: Pemasukan.religionId > Religion.id
+Ref: Pemasukan.tempatIbadahId > TempatIbadah.id
+Ref: Pemasukan.createdBy > User.id
+Ref: Pemasukan.rekeningId > Rekening.id
+Ref: Rekening.religionId > Religion.id
+Ref: Rekening.tempatIbadahId > TempatIbadah.id
+Ref: Notifikasi.userId > User.id [delete: cascade]
+Ref: ActivityLog.userId > User.id
+Ref: TagihanKas.religionId > Religion.id
+Ref: TagihanKas.tempatIbadahId > TempatIbadah.id
+Ref: TagihanKas.createdBy > User.id
+Ref: TagihanKas.userId > User.id [delete: cascade]
+Ref: TagihanKas.pemasukanId > Pemasukan.id
+Ref: TagihanKas.dikonfirmasiOleh > User.id
+Ref: JadwalIbadah.religionId > Religion.id
+Ref: JadwalIbadah.tempatIbadahId > TempatIbadah.id
+Ref: JadwalIbadah.createdBy > User.id
+
+// ─── TABLE GROUPS ────────────────────────────────────────
+
+TableGroup Keuangan {
+  Donasi
+  Pemasukan
+  Pengeluaran
+  Rekening
+  TagihanKas
+}
+
+TableGroup Auth_dan_Profil {
+  User
+  Session
+  VerificationToken
+  ActivityLog
+  Notifikasi
+}
+
+TableGroup Utama {
+  Religion
+  TempatIbadah
+}
+
+TableGroup Kegiatan_dan_Informasi {
+  Kegiatan
+  KegiatanPendaftaran
+  Pengumuman
+  PengumumanLampiran
+  JadwalIbadah
+}

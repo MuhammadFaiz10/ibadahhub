@@ -70,6 +70,17 @@ export default function PengumumanPage() {
       toast.error('Gagal memulihkan')
     }
   }, [mutate])
+  const allowed = isSuperAdmin || isJemaah || canManage
+  if (session && !allowed) {
+    return (
+      <div>
+        <PageHeader title="Pengumuman" />
+        <div className="bg-red-50 border border-red-200 rounded-xl p-5 text-red-700 text-sm mt-4">
+          Akses ditolak. Halaman ini hanya untuk Jemaah, Ketua, Sekretaris, atau Superadmin.
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div>

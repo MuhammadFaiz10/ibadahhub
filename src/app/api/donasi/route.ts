@@ -80,7 +80,7 @@ export async function GET(req: NextRequest) {
       orderBy: { tanggal: 'desc' },
       include: {
         religion: { select: { nama: true } },
-        jemaah: { select: { id: true, nama: true } },
+        user: { select: { id: true, nama: true } },
         konfirmasiBy: { select: { nama: true } },
       },
     }),
@@ -153,14 +153,13 @@ export async function POST(req: NextRequest) {
   }
 
   // JEMAAH: paksa userId = sendiri, namaDonatur = nama session
-  const userId = isJemaah ? Number(session.user.id) : null
+  const userId = isJemaah ? Number(session.user.id) : (parsed.data.jemaahId ?? null)
 
   const donasi = await prisma.donasi.create({
     data: {
       religionId: safeReligionId,
       tempatIbadahId: safeTempatIbadahId,
       userId,
-      jemaahId: isJemaah ? null : (parsed.data.jemaahId ?? null),
       rekeningId: parsed.data.rekeningId ?? null,
       namaDonatur: isJemaah ? (session.user.name ?? parsed.data.namaDonatur) : parsed.data.namaDonatur,
       nominal: parsed.data.nominal,

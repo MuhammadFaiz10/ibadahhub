@@ -27,7 +27,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     include: {
       religion: { select: { id: true, nama: true } },
       tempatIbadah: { select: { id: true, nama: true, slug: true } },
-      jemaah: { select: { id: true, nama: true } },
+      user: { select: { id: true, nama: true } },
       konfirmasiBy: { select: { nama: true } },
     },
   })

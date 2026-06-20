@@ -21,7 +21,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
     where: { id: tiId },
     include: {
       religion: { select: { id: true, nama: true } },
-      _count: { select: { users: true, jemaah: true, kegiatan: true, donasi: true } },
+      _count: { select: { users: true, kegiatan: true, donasi: true } },
     },
   })
   if (!ti) return NextResponse.json({ error: 'Tidak ditemukan' }, { status: 404 })
@@ -78,12 +78,12 @@ export async function PUT(req: NextRequest, { params }: Params) {
     const counts = await prisma.tempatIbadah.findUnique({
       where: { id: tiId },
       include: {
-        _count: { select: { users: true, jemaah: true, kegiatan: true, donasi: true } },
+        _count: { select: { users: true, kegiatan: true, donasi: true } },
       },
     })
     const c = counts?._count
     const hasChildren =
-      (c?.users ?? 0) + (c?.jemaah ?? 0) + (c?.kegiatan ?? 0) + (c?.donasi ?? 0) > 0
+      (c?.users ?? 0) + (c?.kegiatan ?? 0) + (c?.donasi ?? 0) > 0
     if (hasChildren) {
       return NextResponse.json(
         { error: 'Tidak dapat mengubah agama karena sudah ada data terkait' },
@@ -145,7 +145,6 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
       _count: {
         select: {
           users: { where: { deletedAt: null } },
-          jemaah: { where: { deletedAt: null } },
           kegiatan: { where: { deletedAt: null } },
           donasi: { where: { deletedAt: null } },
         },
@@ -157,7 +156,7 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   }
 
   const c = ti._count
-  if (c.users + c.jemaah + c.kegiatan + c.donasi > 0) {
+  if (c.users + c.kegiatan + c.donasi > 0) {
     return NextResponse.json(
       {
         error:

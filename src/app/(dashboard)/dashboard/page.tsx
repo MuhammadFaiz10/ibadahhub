@@ -49,7 +49,7 @@ async function getPerAgamaStats() {
     religions.map(async (r) => {
       const [pengurus, jemaah, kegiatanAktif, kegiatanTotal] = await Promise.all([
         prisma.user.count({ where: { role: 'PENGURUS', religionId: r.id, deletedAt: null } }),
-        prisma.jemaah.count({ where: { religionId: r.id, deletedAt: null } }),
+        prisma.user.count({ where: { role: 'JEMAAH', religionId: r.id, deletedAt: null } }),
         prisma.kegiatan.count({ where: { religionId: r.id, deletedAt: null, status: { in: ['UPCOMING', 'ONGOING'] } } }),
         prisma.kegiatan.count({ where: { religionId: r.id, deletedAt: null } }),
       ])
@@ -85,7 +85,7 @@ async function getTrendKeuangan(tempatIbadahId?: number): Promise<TrendKeuanganD
 async function getTrendPertumbuhan(isSuperAdmin: boolean, tempatIbadahId?: number): Promise<TrendPertumbuhanDatum[]> {
   const sixMonthsAgo = new Date(); sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5); sixMonthsAgo.setDate(1); sixMonthsAgo.setHours(0, 0, 0, 0)
   const [jemaahList, pengurusList, kegiatanList, pengumumanList] = await Promise.all([
-    prisma.jemaah.findMany({ where: { createdAt: { gte: sixMonthsAgo }, deletedAt: null, ...(tempatIbadahId ? { tempatIbadahId } : {}) }, select: { createdAt: true } }),
+    prisma.user.findMany({ where: { role: 'JEMAAH', createdAt: { gte: sixMonthsAgo }, deletedAt: null, ...(tempatIbadahId ? { tempatIbadahId } : {}) }, select: { createdAt: true } }),
     isSuperAdmin ? prisma.user.findMany({ where: { role: 'PENGURUS', createdAt: { gte: sixMonthsAgo }, deletedAt: null }, select: { createdAt: true } }) : [],
     prisma.kegiatan.findMany({ where: { createdAt: { gte: sixMonthsAgo }, deletedAt: null, ...(tempatIbadahId ? { tempatIbadahId } : {}) }, select: { createdAt: true } }),
     prisma.pengumuman.findMany({ where: { createdAt: { gte: sixMonthsAgo }, deletedAt: null, ...(tempatIbadahId ? { tempatIbadahId } : {}) }, select: { createdAt: true } })
@@ -150,7 +150,7 @@ export default async function DashboardPage() {
     }
 
     totalPengurus = await prisma.user.count({ where: { role: 'PENGURUS', deletedAt: null, ...(religionId ? { religionId } : {}) } })
-    totalJemaah = await prisma.jemaah.count({ where: { deletedAt: null, ...(religionId ? { religionId } : {}) } })
+    totalJemaah = await prisma.user.count({ where: { role: 'JEMAAH', deletedAt: null, ...(religionId ? { religionId } : {}) } })
     totalKegiatan = await prisma.kegiatan.count({ where: { deletedAt: null, status: { in: ['UPCOMING', 'ONGOING'] }, ...(religionId ? { religionId } : {}) } })
     totalJadwal = await prisma.jadwalIbadah.count({ where: { deletedAt: null, tanggal: { gte: new Date() }, ...(tempatIbadahId ? { tempatIbadahId } : {}) } })
     
@@ -158,7 +158,7 @@ export default async function DashboardPage() {
       prisma.pemasukan.aggregate({ where: { deletedAt: null, ...(tempatIbadahId ? { tempatIbadahId } : {}) }, _sum: { nominal: true } }),
       prisma.pengeluaran.aggregate({ where: { deletedAt: null, ...(tempatIbadahId ? { tempatIbadahId } : {}) }, _sum: { nominal: true } }),
       prisma.donasi.aggregate({ where: { status: 'DIKONFIRMASI', ...(tempatIbadahId ? { tempatIbadahId } : {}) }, _sum: { nominal: true } }),
-      prisma.tagihanKasJemaah.count({ where: { status: 'BELUM_DIBAYAR', tagihan: { ...(tempatIbadahId ? { tempatIbadahId } : {}) } } })
+      prisma.tagihanKas.count({ where: { status: 'BELUM_DIBAYAR', ...(tempatIbadahId ? { tempatIbadahId } : {}) } })
     ])
     
     saldoKas = Number(pemasukanAgg._sum.nominal ?? 0) - Number(pengeluaranAgg._sum.nominal ?? 0)
@@ -178,10 +178,7 @@ export default async function DashboardPage() {
   let totalDonasiSaya = 0, tagihanBelumDibayar = 0, kegiatanDiikuti = 0
   let saldoKasTempatIbadah = 0, donasiTempatIbadah = 0
   if (isJemaah) {
-    const jemaahProfile = await prisma.jemaah.findUnique({ where: { userId } })
-    if (jemaahProfile) {
-      tagihanBelumDibayar = await prisma.tagihanKasJemaah.count({ where: { jemaahId: jemaahProfile.id, status: 'BELUM_DIBAYAR' } })
-    }
+    tagihanBelumDibayar = await prisma.tagihanKas.count({ where: { userId, status: 'BELUM_DIBAYAR' } })
     const [donasiAgg, pendaftaranCount, jPem, jPeng, jDonasiAll] = await Promise.all([
       prisma.donasi.aggregate({ where: { userId, status: 'DIKONFIRMASI' }, _sum: { nominal: true } }),
       prisma.kegiatanPendaftaran.count({ where: { userId, status: { in: ['TERDAFTAR', 'HADIR'] } } }),

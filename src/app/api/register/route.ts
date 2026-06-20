@@ -71,20 +71,10 @@ export async function POST(req: NextRequest) {
       role: 'JEMAAH',
       religionId: parsed.data.religionId,
       tempatIbadahId: parsed.data.tempatIbadahId,
+      noHp: parsed.data.noHp || null,
+      alamat: parsed.data.alamat || null,
       status: true,
       // emailVerified: null  → biar harus verifikasi via email
-    },
-  })
-
-  await prisma.jemaah.create({
-    data: {
-      userId: user.id,
-      religionId: parsed.data.religionId,
-      tempatIbadahId: parsed.data.tempatIbadahId,
-      nama: parsed.data.nama,
-      email,
-      noHp: parsed.data.noHp,
-      alamat: parsed.data.alamat,
     },
   })
 

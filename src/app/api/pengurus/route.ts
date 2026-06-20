@@ -173,11 +173,11 @@ export async function POST(req: NextRequest) {
   // Kirim welcome email (best-effort — kalau gagal tetap return sukses ke admin)
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL?.trim() || 'http://localhost:3000'
   await sendEmail({
-    to: pengurus.email,
+    to: pengurus.email!,
     subject: 'Akun Pengurus IbadahHub — Detail Login',
     html: welcomePengurusEmail({
       nama: pengurus.nama,
-      email: pengurus.email,
+      email: pengurus.email!,
       password: generatedPassword,
       subRole: pengurus.subRole ?? '',
       loginUrl: `${baseUrl}/login`,

@@ -12,49 +12,66 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url)
     const type = searchParams.get('type') || 'tagihan'
 
-    // Get Jemaah profile
-    const jemaah = await prisma.jemaah.findUnique({
-      where: { userId: Number(session.user.id) }
-    })
-
-    if (!jemaah) {
-      return NextResponse.json({ error: 'Profil jemaah tidak ditemukan' }, { status: 404 })
-    }
+    const userId = Number(session.user.id)
 
     if (type === 'tagihan') {
-      const tagihan = await prisma.tagihanKasJemaah.findMany({
+      const tagihan = await prisma.tagihanKas.findMany({
         where: {
-          jemaahId: jemaah.id,
+          userId,
           status: 'BELUM_DIBAYAR'
         },
-        include: {
-          tagihan: true
-        },
         orderBy: {
-          tagihan: {
-            jatuhTempo: 'asc'
-          }
+          jatuhTempo: 'asc'
         }
       })
-      return NextResponse.json({ data: tagihan, total: tagihan.length })
+      
+      const mappedData = tagihan.map(t => ({
+        id: t.id,
+        status: t.status,
+        metodePembayaran: t.metodePembayaran,
+        buktiPembayaran: t.buktiPembayaran,
+        tanggalBayar: t.tanggalBayar,
+        tagihan: {
+          id: t.id,
+          nama: t.nama,
+          deskripsi: t.deskripsi,
+          nominal: t.nominal,
+          jatuhTempo: t.jatuhTempo,
+        }
+      }))
+
+      return NextResponse.json({ data: mappedData, total: tagihan.length })
     } 
     
     if (type === 'riwayat') {
-      const riwayat = await prisma.tagihanKasJemaah.findMany({
+      const riwayat = await prisma.tagihanKas.findMany({
         where: {
-          jemaahId: jemaah.id,
+          userId,
           status: {
             in: ['LUNAS', 'MENUNGGU_KONFIRMASI']
           }
-        },
-        include: {
-          tagihan: true
         },
         orderBy: {
           tanggalBayar: 'desc'
         }
       })
-      return NextResponse.json({ data: riwayat, total: riwayat.length })
+
+      const mappedData = riwayat.map(t => ({
+        id: t.id,
+        status: t.status,
+        metodePembayaran: t.metodePembayaran,
+        buktiPembayaran: t.buktiPembayaran,
+        tanggalBayar: t.tanggalBayar,
+        tagihan: {
+          id: t.id,
+          nama: t.nama,
+          deskripsi: t.deskripsi,
+          nominal: t.nominal,
+          jatuhTempo: t.jatuhTempo,
+        }
+      }))
+
+      return NextResponse.json({ data: mappedData, total: riwayat.length })
     }
 
     return NextResponse.json({ error: 'Invalid type' }, { status: 400 })

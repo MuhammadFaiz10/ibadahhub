@@ -21,13 +21,21 @@ export async function GET(req: NextRequest) {
   const isSuperAdmin = session.user.role === 'SUPERADMIN'
   const religionId = isSuperAdmin ? undefined : (session.user.religionId ?? -1)
 
-  const data = await prisma.jemaah.findMany({
+  const data = await prisma.user.findMany({
     where: {
+      role: 'JEMAAH',
       deletedAt: null,
       ...(religionId !== undefined ? { religionId } : {}),
     },
     orderBy: { nama: 'asc' },
-    include: {
+    select: {
+      nama: true,
+      email: true,
+      noHp: true,
+      alamat: true,
+      password: true,
+      status: true,
+      createdAt: true,
       religion: { select: { nama: true } },
     },
   })
@@ -38,7 +46,7 @@ export async function GET(req: NextRequest) {
     'No HP': j.noHp ?? '',
     Alamat: j.alamat ?? '',
     Agama: j.religion?.nama ?? '',
-    'Punya Akun': j.userId ? 'Ya' : 'Tidak',
+    'Punya Akun': j.password ? 'Ya' : 'Tidak',
     Status: j.status ? 'Aktif' : 'Nonaktif',
     'Dibuat': j.createdAt.toISOString().slice(0, 10),
   }))

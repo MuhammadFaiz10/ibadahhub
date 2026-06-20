@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
       orderBy: [{ religionId: 'asc' }, { nama: 'asc' }],
       include: {
         religion: { select: { id: true, nama: true } },
-        _count: { select: { users: true, jemaah: true, kegiatan: true } },
+        _count: { select: { users: true, kegiatan: true } },
       },
     }),
     prisma.tempatIbadah.count({ where }),

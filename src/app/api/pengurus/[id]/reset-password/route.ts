@@ -64,7 +64,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL?.trim() || 'http://localhost:3000'
   await sendEmail({
-    to: pengurus.email,
+    to: pengurus.email!,
     subject: 'Password Anda Direset — IbadahHub',
     html: adminPasswordResetEmail({
       nama: pengurus.nama,

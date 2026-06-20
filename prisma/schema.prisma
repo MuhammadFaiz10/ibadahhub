@@ -102,7 +102,6 @@ model Religion {
   pengeluaran  Pengeluaran[]
   pemasukan    Pemasukan[]
   rekening     Rekening[]
-  jemaah       Jemaah[]
   tempatIbadah TempatIbadah[]
   tagihanKas   TagihanKas[]
   jadwalIbadah JadwalIbadah[]
@@ -131,7 +130,6 @@ model TempatIbadah {
 
   religion     Religion       @relation(fields: [religionId], references: [id])
   users        User[]
-  jemaah       Jemaah[]
   kegiatan     Kegiatan[]
   pengumuman   Pengumuman[]
   donasi       Donasi[]
@@ -147,13 +145,17 @@ model TempatIbadah {
 model User {
   id             Int       @id @default(autoincrement())
   nama           String
-  email          String    @unique
-  password       String
+  email          String?   @unique
+  password       String?
   role           Role
   subRole        SubRole?
   religionId     Int?
   tempatIbadahId Int?
   fotoProfil     String?
+  noHp           String?
+  alamat         String?
+  loginAttempts  Int       @default(0)
+  lockoutUntil   DateTime?
   status         Boolean   @default(true)
   emailVerified  DateTime?
   createdAt      DateTime  @default(now())
@@ -162,7 +164,6 @@ model User {
 
   religion            Religion?             @relation(fields: [religionId], references: [id])
   tempatIbadah        TempatIbadah?         @relation(fields: [tempatIbadahId], references: [id])
-  jemaahProfile       Jemaah?
   donasi              Donasi[]              @relation("DonasiByUser")
   konfirmasiDonasi    Donasi[]              @relation("KonfirmasiBy")
   pengeluaran         Pengeluaran[]
@@ -171,8 +172,9 @@ model User {
   activityLogs        ActivityLog[]
   sessions            Session[]
   kegiatanPendaftaran KegiatanPendaftaran[]
-  tagihanKasDibuat    TagihanKas[]
-  konfirmasiTagihan   TagihanKasJemaah[]    @relation("KonfirmasiTagihan")
+  tagihanKasDibuat    TagihanKas[]          @relation("TagihanKasCreatedBy")
+  tagihanKas          TagihanKas[]          @relation("TagihanKasByUser")
+  konfirmasiTagihan   TagihanKas[]          @relation("KonfirmasiTagihan")
   jadwalIbadahDibuat  JadwalIbadah[]
 }
 
@@ -193,28 +195,6 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-model Jemaah {
-  id             Int       @id @default(autoincrement())
-  userId         Int?      @unique
-  religionId     Int
-  tempatIbadahId Int
-  nama           String
-  email          String?
-  noHp           String?
-  alamat         String?
-  status         Boolean   @default(true)
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  deletedAt      DateTime?
-
-  user         User?              @relation(fields: [userId], references: [id])
-  religion     Religion           @relation(fields: [religionId], references: [id])
-  tempatIbadah TempatIbadah       @relation(fields: [tempatIbadahId], references: [id])
-  donasi       Donasi[]
-  tagihanKas   TagihanKasJemaah[]
-
-  @@index([tempatIbadahId])
-}
 
 model Kegiatan {
   id             Int            @id @default(autoincrement())
@@ -295,7 +275,6 @@ model Donasi {
   religionId            Int
   tempatIbadahId        Int
   userId                Int?
-  jemaahId              Int?
   rekeningId            Int?
   namaDonatur           String
   nominal               Decimal          @db.Decimal(15, 2)
@@ -320,7 +299,6 @@ model Donasi {
   religion     Religion     @relation(fields: [religionId], references: [id])
   tempatIbadah TempatIbadah @relation(fields: [tempatIbadahId], references: [id])
   user         User?        @relation("DonasiByUser", fields: [userId], references: [id])
-  jemaah       Jemaah?      @relation(fields: [jemaahId], references: [id])
   rekening     Rekening?    @relation(fields: [rekeningId], references: [id])
   konfirmasiBy User?        @relation("KonfirmasiBy", fields: [dikonfirmasiOleh], references: [id])
 
@@ -371,7 +349,7 @@ model Pemasukan {
   tempatIbadah TempatIbadah       @relation(fields: [tempatIbadahId], references: [id])
   user         User               @relation(fields: [createdBy], references: [id])
   rekening     Rekening?          @relation(fields: [rekeningId], references: [id])
-  tagihanKas   TagihanKasJemaah[]
+  tagihanKas   TagihanKas[]
 
   @@index([tempatIbadahId])
 }
@@ -387,6 +365,7 @@ model Rekening {
   status         StatusRekening @default(AKTIF)
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
+  deletedAt      DateTime?
 
   religion     Religion      @relation(fields: [religionId], references: [id])
   tempatIbadah TempatIbadah  @relation(fields: [tempatIbadahId], references: [id])
@@ -416,51 +395,41 @@ model ActivityLog {
   model     String
   recordId  Int?
   detail    String?  @db.Text
+  ipAddress String?
+  userAgent String?
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id])
 }
 
 model TagihanKas {
-  id             Int       @id @default(autoincrement())
-  religionId     Int
-  tempatIbadahId Int
-  nama           String
-  deskripsi      String?   @db.Text
-  nominal        Decimal   @db.Decimal(15, 2)
-  jatuhTempo     DateTime?
-  createdBy      Int
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  deletedAt      DateTime?
-
-  religion      Religion           @relation(fields: [religionId], references: [id])
-  tempatIbadah  TempatIbadah       @relation(fields: [tempatIbadahId], references: [id])
-  user          User               @relation(fields: [createdBy], references: [id])
-  tagihanJemaah TagihanKasJemaah[]
-
-  @@index([tempatIbadahId])
-}
-
-model TagihanKasJemaah {
   id               Int               @id @default(autoincrement())
-  tagihanId        Int
-  jemaahId         Int
+  religionId       Int
+  tempatIbadahId   Int
+  userId           Int
+  nama             String
+  deskripsi        String?           @db.Text
+  nominal          Decimal           @db.Decimal(15, 2)
+  jatuhTempo       DateTime?
   status           StatusTagihanKas  @default(BELUM_DIBAYAR)
   buktiPembayaran  String?
   metodePembayaran MetodePembayaran?
   pemasukanId      Int?
   tanggalBayar     DateTime?
   dikonfirmasiOleh Int?
+  createdBy        Int
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
+  deletedAt        DateTime?
 
-  tagihan      TagihanKas @relation(fields: [tagihanId], references: [id], onDelete: Cascade)
-  jemaah       Jemaah     @relation(fields: [jemaahId], references: [id], onDelete: Cascade)
-  pemasukan    Pemasukan? @relation(fields: [pemasukanId], references: [id])
-  konfirmasiBy User?      @relation("KonfirmasiTagihan", fields: [dikonfirmasiOleh], references: [id])
+  religion     Religion     @relation(fields: [religionId], references: [id])
+  tempatIbadah TempatIbadah @relation(fields: [tempatIbadahId], references: [id])
+  user         User         @relation("TagihanKasByUser", fields: [userId], references: [id], onDelete: Cascade)
+  pemasukan    Pemasukan?   @relation(fields: [pemasukanId], references: [id])
+  konfirmasiBy User?        @relation("KonfirmasiTagihan", fields: [dikonfirmasiOleh], references: [id])
+  createdByBy  User         @relation("TagihanKasCreatedBy", fields: [createdBy], references: [id])
 
-  @@unique([tagihanId, jemaahId])
+  @@index([tempatIbadahId])
 }
 
 model JadwalIbadah {

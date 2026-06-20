@@ -235,7 +235,6 @@ export async function sendDonasiSuccessEmail(
     namaDonatur: string
     nominal: { toString(): string } | number
     userId: number | null
-    jemaahId: number | null
     dikonfirmasiAt?: Date | null
   },
   paymentChannel: string
@@ -253,17 +252,6 @@ export async function sendDonasiSuccessEmail(
     if (user?.email) {
       toEmail = user.email
       toName = user.nama
-    }
-  }
-
-  if (!toEmail && donasi.jemaahId) {
-    const jemaah = await prisma.jemaah.findUnique({
-      where: { id: donasi.jemaahId },
-      select: { email: true, nama: true },
-    })
-    if (jemaah?.email) {
-      toEmail = jemaah.email
-      toName = jemaah.nama
     }
   }
 

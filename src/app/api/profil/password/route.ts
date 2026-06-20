@@ -22,6 +22,10 @@ export async function POST(req: NextRequest) {
   })
   if (!user) return NextResponse.json({ error: 'User tidak ditemukan' }, { status: 404 })
 
+  if (!user.password) {
+    return NextResponse.json({ error: 'Password belum diatur' }, { status: 400 })
+  }
+
   const validOld = await bcrypt.compare(parsed.data.passwordLama, user.password)
   if (!validOld) {
     return NextResponse.json({ error: 'Password lama tidak sesuai' }, { status: 400 })

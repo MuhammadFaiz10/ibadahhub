@@ -94,11 +94,11 @@ async function main() {
     noHp?: string | null
     alamat?: string | null
   }) {
-    const existing = await prisma.jemaah.findFirst({
-      where: { religionId: opts.religionId, nama: opts.nama, userId: null },
+    const existing = await prisma.user.findFirst({
+      where: { religionId: opts.religionId, nama: opts.nama, role: 'JEMAAH', password: null },
     })
     if (existing) return existing
-    return prisma.jemaah.create({
+    return prisma.user.create({
       data: {
         religionId: opts.religionId,
         tempatIbadahId: opts.tempatIbadahId,
@@ -106,6 +106,7 @@ async function main() {
         email: opts.email ?? null,
         noHp: opts.noHp ?? null,
         alamat: opts.alamat ?? null,
+        role: 'JEMAAH',
         status: true,
       },
     })
@@ -154,28 +155,13 @@ async function main() {
     for (let i = 1; i <= 2; i++) {
       const email = `jemaah${i}.${slug}@ibadahhub.com`
       const tiId = tempatIbadahByReligionId[religion.id]?.id
-      const user = await upsertUser({
+      await upsertUser({
         nama: `Jemaah ${i} ${agama.nama}`,
         email,
         password: 'jemaah123',
         role: 'JEMAAH',
         religionId: religion.id,
         tempatIbadahId: tiId,
-      })
-
-      await prisma.jemaah.upsert({
-        where: { userId: user.id },
-        create: {
-          userId: user.id,
-          religionId: religion.id,
-          tempatIbadahId: tiId!,
-          nama: user.nama,
-          email: user.email,
-          status: true,
-        },
-        update: {
-          tempatIbadahId: tiId!,
-        },
       })
       console.log(`  ✓ Jemaah (akun) ${agama.nama}: ${email}`)
     }

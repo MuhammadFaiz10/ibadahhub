@@ -29,7 +29,7 @@ interface Pendaftaran {
     nama: string
     email: string
     role: string
-    jemaahProfile: { noHp: string | null } | null
+    noHp: string | null
   }
 }
 
@@ -181,10 +181,10 @@ export default function KegiatanPesertaPage() {
                           <Mail size={11} className="text-gray-400" />
                           {p.user.email}
                         </span>
-                        {p.user.jemaahProfile?.noHp && (
+                        {p.user.noHp && (
                           <span className="flex items-center gap-1">
                             <Phone size={11} className="text-gray-400" />
-                            {p.user.jemaahProfile.noHp}
+                            {p.user.noHp}
                           </span>
                         )}
                       </div>

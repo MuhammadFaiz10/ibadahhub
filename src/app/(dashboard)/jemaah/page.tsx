@@ -198,9 +198,18 @@ export default function JemaahPage() {
       ),
     },
   ]
+  const isPengurusKonten = session?.user.role === 'PENGURUS' &&
+    (session?.user.subRole === 'KETUA' || session?.user.subRole === 'SEKRETARIS')
 
-  if (!isSuperAdmin && !isPengurus) {
-    return <div className="text-red-600">Akses ditolak.</div>
+  if (session && !isSuperAdmin && !isPengurusKonten) {
+    return (
+      <div>
+        <PageHeader title="Manajemen Jemaah" />
+        <div className="bg-red-50 border border-red-200 rounded-xl p-5 text-red-700 text-sm mt-4">
+          Akses ditolak. Halaman ini hanya untuk Ketua, Sekretaris, atau Superadmin.
+        </div>
+      </div>
+    )
   }
 
   return (

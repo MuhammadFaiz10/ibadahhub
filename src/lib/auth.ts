@@ -36,7 +36,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           include: { religion: true, tempatIbadah: true },
         })
 
-        if (!user || !user.status) return null
+        if (!user || !user.status || !user.password) return null
 
         const valid = await bcrypt.compare(parsed.data.password, user.password)
         if (!valid) return null
@@ -44,7 +44,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         return {
           id: String(user.id),
           name: user.nama,
-          email: user.email,
+          email: user.email!,
           role: user.role,
           subRole: user.subRole,
           religionId: user.religionId,

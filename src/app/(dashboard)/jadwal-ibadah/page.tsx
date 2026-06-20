@@ -127,6 +127,17 @@ export default function JadwalIbadahPage() {
       ),
     },
   ]
+  const allowed = isSuperAdmin || isJemaah || canManage
+  if (session && !allowed) {
+    return (
+      <div>
+        <PageHeader title="Jadwal Ibadah" />
+        <div className="bg-red-50 border border-red-200 rounded-xl p-5 text-red-700 text-sm mt-4">
+          Akses ditolak. Halaman ini hanya untuk Jemaah, Ketua, Sekretaris, atau Superadmin.
+        </div>
+      </div>
+    )
+  }
 
   // Tampilan Jemaah yang lebih ringkas
   if (isJemaah) {
