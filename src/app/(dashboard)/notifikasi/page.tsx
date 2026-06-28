@@ -27,7 +27,7 @@ export default function NotifikasiPage() {
     page, limit,
   })
 
-  const handleToggleRead = useCallback(async (id: number) => {
+  const handleMarkAsRead = useCallback(async (id: number) => {
     try {
       await axios.patch(`/api/notifikasi/${id}`)
       mutate()
@@ -128,13 +128,15 @@ export default function NotifikasiPage() {
                     </div>
                   </div>
                   <div className="flex flex-col gap-1 flex-shrink-0">
-                    <button
-                      onClick={() => handleToggleRead(n.id)}
-                      title={n.dibaca ? 'Tandai belum dibaca' : 'Tandai dibaca'}
-                      className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
-                    >
-                      <Check size={14} />
-                    </button>
+                    {!n.dibaca && (
+                      <button
+                        onClick={() => handleMarkAsRead(n.id)}
+                        title="Tandai dibaca"
+                        className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+                      >
+                        <Check size={14} />
+                      </button>
+                    )}
                     <button
                       onClick={() => handleDelete(n.id)}
                       title="Hapus"

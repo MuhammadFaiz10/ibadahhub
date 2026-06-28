@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { kegiatanCreateSchema } from '@/lib/validations/kegiatan'
+import { notifyTempatIbadah } from '@/lib/notification-helper'
 
 function canManageKegiatan(session: { user: { role: string; subRole?: string | null } } | null) {
   if (!session) return false
@@ -168,6 +169,20 @@ export async function POST(req: NextRequest) {
       detail: `Tambah kegiatan: ${kegiatan.namaKegiatan} - ${religion.nama}`,
     },
   })
+
+  const formattedDate = new Date(kegiatan.tanggal).toLocaleDateString('id-ID', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  })
+
+  await notifyTempatIbadah(
+    kegiatan.tempatIbadahId,
+    `Kegiatan Baru: ${kegiatan.namaKegiatan}`,
+    `Akan diadakan kegiatan "${kegiatan.namaKegiatan}" pada hari ${formattedDate} pukul ${kegiatan.waktuMulai}.`,
+    '/kegiatan'
+  )
 
   return NextResponse.json({ data: kegiatan }, { status: 201 })
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { pengumumanCreateSchema } from '@/lib/validations/pengumuman'
+import { notifyTempatIbadah } from '@/lib/notification-helper'
 
 function canManagePengumuman(session: { user: { role: string; subRole?: string | null } } | null) {
   if (!session) return false
@@ -146,6 +147,15 @@ export async function POST(req: NextRequest) {
       detail: `Tambah pengumuman: ${pengumuman.judul} - ${religion.nama}`,
     },
   })
+
+  if (pengumuman.status === 'AKTIF') {
+    await notifyTempatIbadah(
+      pengumuman.tempatIbadahId,
+      `Pengumuman Baru: ${pengumuman.judul}`,
+      `Ada pengumuman baru: "${pengumuman.judul}". Silakan cek detailnya.`,
+      '/pengumuman'
+    )
+  }
 
   return NextResponse.json({ data: pengumuman }, { status: 201 })
 }

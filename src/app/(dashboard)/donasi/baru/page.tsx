@@ -22,9 +22,7 @@ interface RekeningInfo {
 }
 
 const metodeOptions = [
-  { value: 'TRANSFER_BANK', label: 'Transfer Bank' },
-  { value: 'TUNAI', label: 'Tunai', forJemaah: false }, // Opsi ini tidak untuk Jemaah
-  { value: 'QRIS', label: 'QRIS' },
+  { value: 'TUNAI', label: 'Tunai' },
   { value: 'MIDTRANS', label: 'Bayar Online (Midtrans)' },
 ]
 
@@ -51,9 +49,7 @@ export default function DonasiBaruPage() {
   const [rekeningList, setRekeningList] = useState<RekeningInfo[]>([])
   const [selectedRekening, setSelectedRekening] = useState<RekeningInfo | null>(null)
 
-  const filteredMetodeOptions = isJemaah
-    ? metodeOptions.filter((m) => m.forJemaah !== false)
-    : metodeOptions
+  const filteredMetodeOptions = metodeOptions
 
   const {
     register,
@@ -64,7 +60,7 @@ export default function DonasiBaruPage() {
   } = useForm<DonasiCreateInput>({
     resolver: zodResolver(donasiCreateSchema),
     defaultValues: {
-      metodePembayaran: isJemaah && rekeningList.length === 0 ? 'MIDTRANS' : 'TRANSFER_BANK',
+      metodePembayaran: 'MIDTRANS',
       tanggal: new Date().toISOString().slice(0, 10),
     },
   })
@@ -261,17 +257,17 @@ export default function DonasiBaruPage() {
             </div>
           )}
 
-          {metodePembayaran !== 'MIDTRANS' && metodePembayaran !== 'QRIS' && (
+          {metodePembayaran === 'TUNAI' && (
             <>
               <FileUploadField
-                label="Bukti Pembayaran"
+                label="Bukti Kuitansi / Tanda Terima"
                 kind="bukti"
                 accept="image/*,application/pdf"
                 value={watch('buktiPembayaran')}
                 onChange={(url) => setValue('buktiPembayaran', url ?? '', { shouldDirty: true })}
               />
               <p className="-mt-3 text-xs text-gray-400">
-                Opsional. Upload screenshot atau PDF bukti transfer (max 5 MB).
+                Opsional. Upload bukti serah terima kuitansi atau tanda terima jika ada (max 5 MB).
               </p>
             </>
           )}

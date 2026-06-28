@@ -26,21 +26,19 @@ import type { NavigationItem } from '@/types'
 import type { Session } from 'next-auth'
 
 const navItems: NavigationItem[] = [
-  { label: 'Dashboard',    href: '/dashboard',   icon: LayoutDashboard, roles: ['SUPERADMIN', 'PENGURUS', 'JEMAAH'] },
-  { label: 'Agama',        href: '/agama',        icon: Globe,           roles: ['SUPERADMIN'] },
-  { label: 'Tempat Ibadah',href: '/tempat-ibadah',icon: Building2,       roles: ['SUPERADMIN'] },
-  { label: 'Pengurus',     href: '/pengurus',     icon: UserCheck,       roles: ['SUPERADMIN', 'PENGURUS'], subRoles: ['KETUA'] },
-  { label: 'Jemaah',       href: '/jemaah',       icon: Users,           roles: ['SUPERADMIN', 'PENGURUS'], subRoles: ['KETUA', 'SEKRETARIS'] },
-  { label: 'Kegiatan',     href: '/kegiatan',     icon: Calendar,        roles: ['SUPERADMIN', 'PENGURUS', 'JEMAAH'], subRoles: ['KETUA', 'SEKRETARIS'] },
-  { label: 'Jadwal Ibadah',href: '/jadwal-ibadah',icon: Clock,           roles: ['SUPERADMIN', 'PENGURUS', 'JEMAAH'], subRoles: ['KETUA', 'SEKRETARIS'] },
-  { label: 'Pengumuman',   href: '/pengumuman',   icon: Megaphone,       roles: ['SUPERADMIN', 'PENGURUS', 'JEMAAH'], subRoles: ['KETUA', 'SEKRETARIS'] },
-  { label: 'Donasi',       href: '/donasi',       icon: HandCoins,       roles: ['SUPERADMIN', 'PENGURUS', 'JEMAAH'], subRoles: ['KETUA', 'BENDAHARA'] },
-  { label: 'Kas',          href: '/kas',          icon: Wallet,          roles: ['SUPERADMIN', 'PENGURUS'], subRoles: ['KETUA', 'BENDAHARA'] },
-  { label: 'Kas Saya',     href: '/kas-saya',     icon: Receipt,         roles: ['JEMAAH'] },
-  { label: 'Laporan',      href: '/laporan',      icon: FileBarChart,    roles: ['SUPERADMIN', 'PENGURUS'], subRoles: ['KETUA', 'BENDAHARA'] },
-  { label: 'Rekening',     href: '/rekening',     icon: CreditCard,      roles: ['SUPERADMIN', 'PENGURUS'], subRoles: ['KETUA'] },
-  { label: 'Aktivitas',    href: '/aktivitas',    icon: Activity,        roles: ['SUPERADMIN'] },
-  { label: 'Profil',       href: '/profil',       icon: UserCircle,      roles: ['SUPERADMIN', 'PENGURUS', 'JEMAAH'] },
+  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['SUPERADMIN', 'PENGURUS', 'JEMAAH'] },
+  { label: 'Agama', href: '/agama', icon: Globe, roles: ['SUPERADMIN'] },
+  { label: 'Tempat Ibadah', href: '/tempat-ibadah', icon: Building2, roles: ['SUPERADMIN'] },
+  { label: 'Pengguna', href: '/pengguna', icon: Users, roles: ['SUPERADMIN', 'PENGURUS'], subRoles: ['KETUA', 'SEKRETARIS'] },
+  { label: 'Kegiatan', href: '/kegiatan', icon: Calendar, roles: ['SUPERADMIN', 'PENGURUS', 'JEMAAH'], subRoles: ['KETUA', 'SEKRETARIS'] },
+  { label: 'Jadwal Ibadah', href: '/jadwal-ibadah', icon: Clock, roles: ['SUPERADMIN', 'PENGURUS', 'JEMAAH'], subRoles: ['KETUA', 'SEKRETARIS'] },
+  { label: 'Pengumuman', href: '/pengumuman', icon: Megaphone, roles: ['SUPERADMIN', 'PENGURUS', 'JEMAAH'], subRoles: ['KETUA', 'SEKRETARIS'] },
+  { label: 'Keuangan', href: '/keuangan', icon: HandCoins, roles: ['SUPERADMIN', 'PENGURUS'] },
+  { label: 'Donasi', href: '/keuangan?tab=donasi', icon: HandCoins, roles: ['JEMAAH'] },
+  { label: 'Kas Saya', href: '/kas-saya', icon: Receipt, roles: ['JEMAAH'] },
+  { label: 'Laporan', href: '/laporan', icon: FileBarChart, roles: ['SUPERADMIN', 'PENGURUS'], subRoles: ['KETUA', 'BENDAHARA'] },
+  { label: 'Aktivitas', href: '/aktivitas', icon: Activity, roles: ['SUPERADMIN'] },
+  { label: 'Profil', href: '/profil', icon: UserCircle, roles: ['SUPERADMIN', 'PENGURUS', 'JEMAAH'] },
 ]
 
 interface SidebarProps {
@@ -75,7 +73,8 @@ export function Sidebar({ session, onNavigate }: SidebarProps) {
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
         {visibleItems.map((item) => {
           const Icon = item.icon
-          const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+          const cleanHref = item.href.split('?')[0]
+          const isActive = pathname === cleanHref || pathname.startsWith(cleanHref + '/')
           return (
             <Link
               key={item.href}

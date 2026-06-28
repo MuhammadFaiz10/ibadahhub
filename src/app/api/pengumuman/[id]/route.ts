@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { pengumumanUpdateSchema } from '@/lib/validations/pengumuman'
 import { validateScopeUpdate, isScopeError } from '@/lib/scope'
+import { notifyTempatIbadah } from '@/lib/notification-helper'
 
 function canManagePengumuman(session: { user: { role: string; subRole?: string | null } } | null) {
   if (!session) return false
@@ -98,6 +99,15 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       detail: `Update pengumuman: ${updated.judul}`,
     },
   })
+
+  if (updated.status === 'AKTIF' && pengumuman.status !== 'AKTIF') {
+    await notifyTempatIbadah(
+      updated.tempatIbadahId,
+      `Pengumuman Baru: ${updated.judul}`,
+      `Ada pengumuman baru: "${updated.judul}". Silakan cek detailnya.`,
+      '/pengumuman'
+    )
+  }
 
   return NextResponse.json({ data: updated })
 }

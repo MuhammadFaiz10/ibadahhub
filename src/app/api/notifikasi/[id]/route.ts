@@ -18,7 +18,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
   const updated = await prisma.notifikasi.update({
     where: { id },
-    data: { dibaca: !notif.dibaca },
+    data: { dibaca: true },
   })
 
   return NextResponse.json({ data: updated })

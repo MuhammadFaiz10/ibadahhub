@@ -15,9 +15,8 @@ import { FileUploadField } from '@/components/shared/FileUploadField'
 import { ScopeSelector } from '@/components/shared/ScopeSelector'
 
 const metodeOptions = [
-  { value: 'TRANSFER_BANK', label: 'Transfer Bank' },
   { value: 'TUNAI', label: 'Tunai' },
-  { value: 'QRIS', label: 'QRIS' },
+  { value: 'MIDTRANS', label: 'Bayar Online (Midtrans)' },
 ]
 
 function canManageKeuangan(session: { user: { role: string; subRole?: string | null } } | null) {
@@ -52,6 +51,7 @@ export default function DonasiEditPage() {
     setValue,
     formState: { errors, isSubmitting },
   } = useForm<DonasiUpdateInput>({ resolver: zodResolver(donasiUpdateSchema) })
+  const metodePembayaran = watch('metodePembayaran')
 
   useEffect(() => {
     axios
@@ -125,13 +125,20 @@ export default function DonasiEditPage() {
             </select>
           </div>
 
-          <FileUploadField
-            label="Bukti Pembayaran"
-            kind="bukti"
-            accept="image/*,application/pdf"
-            value={watch('buktiPembayaran')}
-            onChange={(url) => setValue('buktiPembayaran', url ?? '', { shouldDirty: true })}
-          />
+          {metodePembayaran === 'TUNAI' && (
+            <>
+              <FileUploadField
+                label="Bukti Kuitansi / Tanda Terima"
+                kind="bukti"
+                accept="image/*,application/pdf"
+                value={watch('buktiPembayaran')}
+                onChange={(url) => setValue('buktiPembayaran', url ?? '', { shouldDirty: true })}
+              />
+              <p className="-mt-3 text-xs text-gray-400">
+                Opsional. Upload bukti serah terima kuitansi atau tanda terima jika ada (max 5 MB).
+              </p>
+            </>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Catatan</label>

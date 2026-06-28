@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { checkUpcomingWorshipSchedules } from '@/lib/notification-helper'
 
 // GET /api/notifikasi
 export async function GET(req: NextRequest) {
@@ -8,6 +9,8 @@ export async function GET(req: NextRequest) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const userId = Number(session.user.id)
+  await checkUpcomingWorshipSchedules(userId)
+
   const { searchParams } = req.nextUrl
   const page = Math.max(1, Number(searchParams.get('page') ?? 1))
   const limit = Math.min(50, Number(searchParams.get('limit') ?? 20))
