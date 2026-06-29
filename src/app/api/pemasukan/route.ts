@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
     ...(tempatIbadahId !== undefined ? { tempatIbadahId } : {}),
     ...(rekeningIdQ ? { rekeningId: Number(rekeningIdQ) } : {}),
     ...(kategori ? { kategori: kategori as 'DONASI' | 'HIBAH' | 'USAHA' | 'LAINNYA' } : {}),
-    ...(search ? { keterangan: { contains: search, mode: 'insensitive' as const } } : {}),
+    ...(search ? { keterangan: { contains: search } } : {}),
   }
 
   const [data, total, totalNominal] = await Promise.all([

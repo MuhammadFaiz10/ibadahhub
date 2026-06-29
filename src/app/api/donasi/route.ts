@@ -67,8 +67,8 @@ export async function GET(req: NextRequest) {
   }
   if (search) {
     where.OR = [
-      { namaDonatur: { contains: search, mode: 'insensitive' } },
-      { catatan: { contains: search, mode: 'insensitive' } },
+      { namaDonatur: { contains: search } },
+      { catatan: { contains: search } },
     ]
   }
 

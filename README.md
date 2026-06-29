@@ -2,7 +2,7 @@
 
 Platform manajemen masjid berbasis web — kelola jemaah, keuangan, pengumuman, dan ibadah dalam satu sistem.
 
-**Stack:** Next.js 14 (App Router) · TypeScript · PostgreSQL · Prisma · Auth.js v5 · Tailwind CSS
+**Stack:** Next.js 14 (App Router) · TypeScript · MySQL · Prisma · Auth.js v5 · Tailwind CSS
 
 ---
 
@@ -11,7 +11,7 @@ Platform manajemen masjid berbasis web — kelola jemaah, keuangan, pengumuman, 
 Pastikan sudah terinstall:
 
 - [Node.js](https://nodejs.org/) **v20 LTS** atau lebih baru
-- [PostgreSQL](https://www.postgresql.org/download/) **v16** atau lebih baru
+- [MySQL](https://www.mysql.com/downloads/) **v8** atau lebih baru
 - npm v10+
 
 ---
@@ -42,8 +42,8 @@ cp .env.example .env.local
 Buka `.env.local` dan sesuaikan:
 
 ```env
-# Database PostgreSQL
-DATABASE_URL="postgresql://USER:PASSWORD@localhost:5432/ibadahhub"
+# Database MySQL
+DATABASE_URL="mysql://root:password@localhost:3306/ibadahhub"
 
 # Auth.js — generate secret dengan: openssl rand -base64 32
 AUTH_SECRET="your-secret-here"
@@ -67,15 +67,13 @@ MIDTRANS_CLIENT_KEY="SB-Mid-client-xxxx"
 MIDTRANS_IS_PRODUCTION="false"
 ```
 
-### 4. Buat database PostgreSQL
+### 4. Buat database MySQL
 
 ```bash
-psql -U postgres -c "CREATE DATABASE ibadahhub;"
-psql -U postgres -c "CREATE USER ibadahhub_user WITH PASSWORD 'password_aman';"
-psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE ibadahhub TO ibadahhub_user;"
+mysql -u root -p -e "CREATE DATABASE ibadahhub;"
 ```
 
-> Sesuaikan `USER`, `PASSWORD`, dan nama database dengan nilai di `DATABASE_URL` milikmu.
+> Sesuaikan `root`, `password`, dan nama database dengan nilai di `DATABASE_URL` milikmu.
 
 ### 5. Jalankan migrasi dan seed database
 

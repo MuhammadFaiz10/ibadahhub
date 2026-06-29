@@ -14,7 +14,7 @@ async function findReligion(nama: string) {
   return prisma.religion.findFirst({
     where: {
       deletedAt: null,
-      nama: { equals: decoded, mode: 'insensitive' },
+      nama: decoded,
     },
     select: { id: true, nama: true, deskripsi: true },
   })

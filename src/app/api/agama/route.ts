@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
   const where = {
     deletedAt: showArsip ? ({ not: null } as const) : null,
     ...(search
-      ? { nama: { contains: search, mode: 'insensitive' as const } }
+      ? { nama: { contains: search } }
       : {}),
   }
 

@@ -48,9 +48,9 @@ export async function GET(req: NextRequest) {
     ...(search
       ? {
           OR: [
-            { namaBank: { contains: search, mode: 'insensitive' as const } },
-            { nomorRekening: { contains: search, mode: 'insensitive' as const } },
-            { namaPemilik: { contains: search, mode: 'insensitive' as const } },
+            { namaBank: { contains: search } },
+            { nomorRekening: { contains: search } },
+            { namaPemilik: { contains: search } },
           ],
         }
       : {}),

@@ -43,8 +43,8 @@ export async function GET(req: NextRequest) {
     ...(search
       ? {
           OR: [
-            { nama: { contains: search, mode: 'insensitive' as const } },
-            { email: { contains: search, mode: 'insensitive' as const } },
+            { nama: { contains: search } },
+            { email: { contains: search } },
           ],
         }
       : {}),

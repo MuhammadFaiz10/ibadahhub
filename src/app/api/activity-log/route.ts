@@ -23,8 +23,8 @@ export async function GET(req: NextRequest) {
   if (aksi) where.aksi = aksi
   if (search) {
     where.OR = [
-      { detail: { contains: search, mode: 'insensitive' } },
-      { user: { nama: { contains: search, mode: 'insensitive' } } },
+      { detail: { contains: search } },
+      { user: { nama: { contains: search } } },
     ]
   }
 
