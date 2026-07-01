@@ -184,7 +184,6 @@ async function main() {
       { nama: 'Ni Kadek Ayu', email: 'kadek.ayu@example.com' },
       { nama: 'I Putu Wira' },
     ],
-    // jajajajaj
     Buddha: [
       { nama: 'Andre Wijaya', email: 'andre.w@example.com', noHp: '081234567831' },
       { nama: 'Lina Suryani', alamat: 'Jl. Pluit Raya No. 22, Jakarta' },
