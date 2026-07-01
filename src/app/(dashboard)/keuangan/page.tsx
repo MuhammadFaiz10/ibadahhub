@@ -319,49 +319,11 @@ function KeuanganPageContent() {
     doc.save(`Laporan_Donasi_${new Date().getTime()}.pdf`)
   }
 
-  const loadMidtransScript = (url: string, clientKey: string): Promise<void> => {
-    return new Promise((resolve, reject) => {
-      const existing = document.getElementById('midtrans-snap')
-      if (existing) {
-        resolve()
-        return
-      }
-      const script = document.createElement('script')
-      script.id = 'midtrans-snap'
-      script.src = url
-      script.setAttribute('data-client-key', clientKey)
-      script.onload = () => resolve()
-      script.onerror = reject
-      document.head.appendChild(script)
-    })
-  }
-
   const handleBayarDonasi = useCallback(
-    async (donasiId: number) => {
-      setPayingDonasiId(donasiId)
-      try {
-        const res = await axios.post('/api/donasi/midtrans', { donasiId })
-        const { token, snapScriptUrl, clientKey } = res.data.data
-        await loadMidtransScript(snapScriptUrl, clientKey)
-        ;(window as any).snap.pay(token, {
-          onSuccess: () => {
-            toast.success('Pembayaran berhasil!')
-            mutateDonasi()
-          },
-          onPending: () => {
-            toast.info('Menunggu pembayaran dikonfirmasi.')
-            mutateDonasi()
-          },
-          onError: () => toast.error('Pembayaran gagal. Silakan coba lagi.'),
-          onClose: () => toast.warning('Pembayaran dibatalkan.'),
-        })
-      } catch (err) {
-        if (axios.isAxiosError(err)) toast.error(err.response?.data?.error ?? 'Gagal memulai pembayaran')
-      } finally {
-        setPayingDonasiId(null)
-      }
+    (donasiId: number) => {
+      router.push(`/donasi/bayar/${donasiId}`)
     },
-    [mutateDonasi]
+    [router]
   )
 
   useEffect(() => {
@@ -1302,8 +1264,11 @@ function KeuanganPageContent() {
         <div>
           {/* Scope Filter for Super Admin */}
           {isSuperAdmin && (
-            <div className="mb-6 bg-white p-4 rounded-xl border border-gray-200">
-              <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wider">Filter Tempat Ibadah</p>
+            <div className="mb-6 bg-white p-4 rounded-xl border border-gray-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold text-gray-500 mb-0.5 uppercase tracking-wider">Filter Tempat Ibadah</p>
+                <p className="text-xs text-gray-400">Filter data arus kas berdasarkan agama dan tempat ibadah</p>
+              </div>
               <ScopeFilter
                 religionId={filterReligionIdKas}
                 tempatIbadahId={filterTempatIbadahIdKas}

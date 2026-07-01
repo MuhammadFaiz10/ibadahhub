@@ -35,6 +35,7 @@ export interface MidtransTransactionParams {
   amount: number
   customerDetails: MidtransCustomerDetails
   itemDetails?: MidtransItemDetail[]
+  enabledPayments?: string[]
 }
 
 export interface MidtransSnapResponse {
@@ -76,9 +77,9 @@ export function generateOrderId(donasiId: number): string {
 export async function createSnapTransaction(
   params: MidtransTransactionParams
 ): Promise<MidtransSnapResponse> {
-  const { orderId, amount, customerDetails, itemDetails } = params
+  const { orderId, amount, customerDetails, itemDetails, enabledPayments } = params
 
-  const payload = {
+  const payload: any = {
     transaction_details: {
       order_id: orderId,
       gross_amount: amount,
@@ -94,6 +95,10 @@ export async function createSnapTransaction(
     ],
   }
 
+  if (enabledPayments) {
+    payload.enabled_payments = enabledPayments
+  }
+
   const { data } = await axios.post<MidtransSnapResponse>(
     `${SNAP_BASE_URL}/transactions`,
     payload,
@@ -106,6 +111,114 @@ export async function createSnapTransaction(
   )
 
   return data
+}
+
+export interface MidtransChargeParams {
+  orderId: string
+  amount: number
+  paymentMethod: string
+  customerDetails: MidtransCustomerDetails
+  creditCardToken?: string
+}
+
+export async function chargeMidtransTransaction(
+  params: MidtransChargeParams
+): Promise<any> {
+  const { orderId, amount, paymentMethod, customerDetails } = params
+
+  let payload: any = {
+    transaction_details: {
+      order_id: orderId,
+      gross_amount: amount,
+    },
+    customer_details: customerDetails,
+  }
+
+  if (paymentMethod === 'bca' || paymentMethod === 'bni' || paymentMethod === 'bri' || paymentMethod === 'bsi') {
+    payload.payment_type = 'bank_transfer'
+    payload.bank_transfer = {
+      bank: paymentMethod,
+    }
+  } else if (paymentMethod === 'permata') {
+    payload.payment_type = 'permata'
+  } else if (paymentMethod === 'mandiri') {
+    payload.payment_type = 'echannel'
+    payload.echannel = {
+      bill_info1: 'Donasi IbadahHub',
+      bill_info2: 'Pembayaran Online',
+    }
+  } else if (paymentMethod === 'qris') {
+    payload.payment_type = 'qris'
+  } else if (paymentMethod === 'gopay') {
+    payload.payment_type = 'gopay'
+  } else if (paymentMethod === 'shopeepay') {
+    payload.payment_type = 'shopeepay'
+    payload.shopeepay = {
+      callback_url: `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/donasi`,
+    }
+  } else if (paymentMethod === 'alfamart' || paymentMethod === 'indomaret') {
+    payload.payment_type = 'cstore'
+    payload.cstore = {
+      store: paymentMethod,
+      message: 'Donasi IbadahHub',
+    }
+  } else if (paymentMethod === 'credit_card') {
+    if (!params.creditCardToken) {
+      throw new Error('Token credit card diperlukan')
+    }
+    payload.payment_type = 'credit_card'
+    payload.credit_card = {
+      token_id: params.creditCardToken,
+      secure: true,
+    }
+  } else {
+    throw new Error('Metode pembayaran tidak didukung')
+  }
+
+  const { data } = await axios.post(
+    `${API_BASE_URL}/charge`,
+    payload,
+    {
+      headers: {
+        Authorization: `Basic ${getAuthHeader()}`,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+    }
+  )
+
+  return data
+}
+
+export function getQrisQrCodeUrl(orderId: string, paymentType: string = 'qris'): string {
+  const type = paymentType === 'gopay' ? 'gopay' : paymentType === 'shopeepay' ? 'shopeepay' : 'qris'
+  return `/api/donasi/midtrans/qr-code/${orderId}?type=${type}`
+}
+
+export async function fetchMidtransQrCode(orderId: string, paymentType: string): Promise<{ buffer: Buffer; contentType: string }> {
+  try {
+    // Ambil status transaksi terlebih dahulu untuk mendapatkan transaction_id asli
+    const status = await getTransactionStatus(orderId)
+    const transactionId = status.transaction_id
+    const type = status.payment_type === 'gopay' ? 'gopay' : status.payment_type === 'shopeepay' ? 'shopeepay' : 'qris'
+
+    const response = await axios.get(`${API_BASE_URL}/${type}/${transactionId}/qr-code`, {
+      headers: {
+        Authorization: `Basic ${getAuthHeader()}`,
+      },
+      responseType: 'arraybuffer',
+    })
+    return {
+      buffer: Buffer.from(response.data),
+      contentType: String(response.headers['content-type'] || 'image/png'),
+    }
+  } catch (error: any) {
+    if (error.response?.data) {
+      const errStr = Buffer.from(error.response.data).toString('utf-8')
+      console.error('Midtrans QR-Code API error body:', errStr)
+    }
+    throw error
+  }
 }
 
 export async function getTransactionStatus(orderId: string): Promise<MidtransNotification> {
