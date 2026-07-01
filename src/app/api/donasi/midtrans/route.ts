@@ -14,6 +14,7 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json()
   const donasiId = Number(body.donasiId)
+  const paymentMethod = body.paymentMethod
 
   if (!donasiId || isNaN(donasiId)) {
     return NextResponse.json({ error: 'donasiId tidak valid' }, { status: 400 })
@@ -35,15 +36,16 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  if (donasi.status !== 'PENDING') {
+  const isExpired = ['expire', 'cancel', 'failure'].includes(donasi.midtransStatus || '')
+  if (donasi.status !== 'PENDING' && !isExpired) {
     return NextResponse.json(
       { error: 'Transaksi Midtrans hanya bisa dibuat untuk donasi berstatus PENDING' },
       { status: 400 }
     )
   }
 
-  // Jika sudah punya token aktif, kembalikan token yang lama
-  if (donasi.midtransToken && donasi.midtransPaymentUrl) {
+  // Jika sudah punya token aktif, belum expired, dan tidak meminta paymentMethod khusus, kembalikan token yang lama
+  if (donasi.midtransToken && donasi.midtransPaymentUrl && !isExpired && !paymentMethod) {
     return NextResponse.json({
       data: {
         token: donasi.midtransToken,
@@ -79,6 +81,7 @@ export async function POST(req: NextRequest) {
         name: `Donasi - ${donasi.namaDonatur}`,
       },
     ],
+    enabledPayments: paymentMethod ? [paymentMethod] : undefined,
   })
 
   await prisma.donasi.update({
@@ -88,6 +91,7 @@ export async function POST(req: NextRequest) {
       midtransToken: snap.token,
       midtransPaymentUrl: snap.redirect_url,
       midtransStatus: 'pending',
+      status: 'PENDING',
     },
   })
 

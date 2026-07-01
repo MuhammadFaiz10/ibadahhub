@@ -62,8 +62,8 @@ export function ScopeFilter({ religionId, tempatIbadahId, onChange, compact = tr
     : 'w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white'
 
   return (
-    <>
-      <div className="relative">
+    <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+      <div className="relative flex-1 sm:flex-none">
         <Globe
           size={14}
           className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
@@ -75,7 +75,7 @@ export function ScopeFilter({ religionId, tempatIbadahId, onChange, compact = tr
             // reset tempat ibadah saat agama berubah / di-clear
             onChange({ religionId: v, tempatIbadahId: undefined })
           }}
-          className={`${selectClass} pl-9`}
+          className={`${selectClass} pl-9 w-full sm:w-48`}
           title="Filter agama"
         >
           <option value="">Semua agama</option>
@@ -87,7 +87,7 @@ export function ScopeFilter({ religionId, tempatIbadahId, onChange, compact = tr
         </select>
       </div>
 
-      <div className="relative">
+      <div className="relative flex-1 sm:flex-none">
         <Building2
           size={14}
           className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
@@ -99,7 +99,7 @@ export function ScopeFilter({ religionId, tempatIbadahId, onChange, compact = tr
             const v = e.target.value ? Number(e.target.value) : undefined
             onChange({ religionId, tempatIbadahId: v })
           }}
-          className={`${selectClass} pl-9 disabled:bg-gray-50 disabled:text-gray-400`}
+          className={`${selectClass} pl-9 w-full sm:w-56 disabled:bg-gray-50 disabled:text-gray-400`}
           title="Filter tempat ibadah"
         >
           <option value="">
@@ -119,6 +119,7 @@ export function ScopeFilter({ religionId, tempatIbadahId, onChange, compact = tr
           ))}
         </select>
       </div>
-    </>
+    </div>
   )
 }
+

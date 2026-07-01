@@ -5,6 +5,7 @@ import {
   getTransactionStatus,
   mapMidtransStatus,
   resolvePaymentChannel,
+  getQrisQrCodeUrl,
 } from '@/lib/midtrans'
 import { sendDonasiSuccessEmail } from '@/lib/email'
 
@@ -66,6 +67,10 @@ export async function GET(
     }
   }
 
+  // For Mandiri Bill / echannel, the Biller Code is returned under biller_code and Bill Key under bill_key
+  const billKey = (notification as any).bill_key || null
+  const billerCode = (notification as any).biller_code || null
+
   return NextResponse.json({
     data: {
       orderId,
@@ -73,7 +78,15 @@ export async function GET(
       statusDonasi,
       paymentChannel,
       paymentType: notification.payment_type,
-      grossAmount: notification.gross_amount,
+      grossAmount: notification.gross_amount || String(donasi.nominal),
+      vaNumbers: notification.va_numbers || null,
+      paymentCode: notification.payment_code || null,
+      store: notification.store || null,
+      billKey,
+      billerCode,
+      qrCodeUrl: ['qris', 'gopay', 'shopeepay'].includes(notification.payment_type)
+        ? getQrisQrCodeUrl(orderId, notification.payment_type)
+        : null,
     },
   })
 }

@@ -104,16 +104,8 @@ export default function DonasiBaruPage() {
       const res = await axios.post('/api/donasi', data)
 
       if (data.metodePembayaran === 'MIDTRANS') {
-        const snapRes = await axios.post('/api/donasi/midtrans', { donasiId: res.data.data.id })
-        const { token, snapScriptUrl, clientKey } = snapRes.data.data
-        await loadSnapScript(snapScriptUrl, clientKey)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ;(window as any).snap.pay(token, {
-          onSuccess: () => { toast.success('Pembayaran berhasil!'); router.push('/donasi') },
-          onPending: () => { toast.info('Menunggu pembayaran dikonfirmasi.'); router.push('/donasi') },
-          onError: () => { toast.error('Pembayaran gagal. Coba lagi dari halaman donasi.'); router.push('/donasi') },
-          onClose: () => { toast.warning('Pembayaran dibatalkan. Donasi tersimpan sebagai PENDING.'); router.push('/donasi') },
-        })
+        toast.success('Donasi berhasil dicatat. Mengarahkan ke halaman pembayaran...')
+        router.push(`/donasi/bayar/${res.data.data.id}`)
       } else {
         toast.success(isJemaah ? 'Donasi berhasil dicatat. Menunggu konfirmasi pengurus.' : 'Donasi berhasil dicatat')
         router.push('/donasi')
